@@ -1,0 +1,29 @@
+{
+  "macros": {
+    "game_time": {
+      "name": "Game Time Protocol",
+      "description": "Launches Steam, Discord, and sets system volume",
+      "actions": [
+        {"action": "open_app", "target": "steam"},
+        {"action": "open_app", "target": "discord"},
+        {"action": "media_control", "target": "volume up"}
+      ]
+    },
+    "work_mode": {
+      "name": "Work Mode Protocol",
+      "description": "Opens Brave browser and Spotify music",
+      "actions": [
+        {"action": "open_app", "target": "brave"},
+        {"action": "play_spotify", "target": "lofi beats"}
+      ]
+    },
+    "cinema_mode": {
+      "name": "Cinema Protocol",
+      "description": "Activates cinema lights and launches YouTube",
+      "actions": [
+        {"action": "play_youtube", "target": "4k relaxing visuals"},
+        {"action": "smart_home", "target": "scene.cinema_mode"}
+      ]
+    }
+  }
+}

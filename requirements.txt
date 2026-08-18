@@ -1,0 +1,34 @@
+# LLM Orchestration
+ollama>=0.3.0
+pydantic>=2.0.0
+
+# CUDA GPU Acceleration
+nvidia-cublas-cu12
+nvidia-cudnn-cu12
+
+# Voice Processing & Duplex Audio (STT/TTS)
+faster-whisper>=1.0.0
+silero-vad>=4.0
+sounddevice>=0.4.6
+pyttsx3>=2.90
+edge-tts>=6.1.9
+SpeechRecognition>=3.10.0
+pygame-ce>=2.4.0
+
+# UI & Marvel Stark HUD Design
+PyQt6>=6.6.0
+PySide6>=6.6.0
+customtkinter>=5.2.0
+
+# Computer Vision, Browser & GUI Automation
+pillow>=10.0.0
+opencv-python>=4.8.0
+pyautogui>=0.9.54
+pyperclip>=1.8.2
+playwright>=1.40.0
+rapidfuzz>=3.0.0
+pywin32>=306
+
+# Persistent Memory & System Control
+requests>=2.31.0
+psutil>=5.9.0

@@ -1,0 +1,73 @@
+{
+  "assistant_name": "JARVIS",
+  "system_prompt": "You are JARVIS, a highly intelligent, elegant, and efficient AI assistant. Speak concisely, naturally, and with sophisticated warmth.",
+  "acknowledgments": {
+    "play_spotify": [
+      "Accessing Spotify audio stream now.",
+      "Opening Spotify and queueing your selection.",
+      "Connecting to Spotify music library."
+    ],
+    "play_youtube": [
+      "Navigating YouTube for your video request.",
+      "Opening YouTube search now.",
+      "Accessing YouTube media stream."
+    ],
+    "search_google": [
+      "Querying Google for your request.",
+      "Initiating web search now.",
+      "Fetching search results."
+    ],
+    "open_app": [
+      "Launching target application.",
+      "Initializing program instance.",
+      "Opening application now."
+    ],
+    "close_app": [
+      "Terminating process handle.",
+      "Closing target application.",
+      "Ending process instance."
+    ],
+    "macro_routine": [
+      "Executing macro routine sequence.",
+      "Initiating multi-app macro protocol.",
+      "Configuring environment profile."
+    ],
+    "general": [
+      "Right away.",
+      "Processing your request.",
+      "Initiating protocol."
+    ]
+  },
+  "completion_wrapups": {
+    "play_spotify": [
+      "Playback is live—enjoy.",
+      "Track loaded and playing.",
+      "Audio stream active."
+    ],
+    "play_youtube": [
+      "Video is playing on your display.",
+      "Media stream active.",
+      "Playback initiated."
+    ],
+    "search_google": [
+      "Search results are ready on your screen.",
+      "Web results loaded."
+    ],
+    "open_app": [
+      "Application is ready.",
+      "Program launched successfully."
+    ],
+    "close_app": [
+      "Process closed cleanly.",
+      "Application terminated."
+    ],
+    "macro_routine": [
+      "Macro routine complete.",
+      "All applications and settings applied."
+    ],
+    "general": [
+      "Task complete.",
+      "Protocol finished successfully."
+    ]
+  }
+}
