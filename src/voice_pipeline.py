@@ -419,8 +419,34 @@ class VoicePipeline:
         return self.listen_and_filter()
 
     def listen_raw_command(self, timeout: float = 6.0) -> str:
-        """Captures raw user command in ACTIVE_COMMAND mode without requiring wake word."""
-        return self.listen_for_direct_command(duration=timeout)
+        """
+        Listens directly for the user's follow-up command when in ACTIVE_COMMAND mode.
+        (Does NOT require repeating 'Hey Jarvis').
+        Returns:
+            transcribed_command: str
+        """
+        if self.is_mic_muted:
+            return ""
+
+        audio = self.record_audio_with_vad(duration=timeout)
+        if not audio:
+            return ""
+
+        raw_text = self._transcribe_audio(audio).strip()
+        if not raw_text or raw_text.lower() in ["you", "thank you", "thanks", "bye", "subtitles"]:
+            return ""
+
+        # Clean any repeated wake words if user happened to say it again
+        clean_text = raw_text.lower()
+        if "jarvis" in clean_text:
+            _, extracted_cmd = self.filter_wake_word(clean_text)
+            return extracted_cmd or raw_text
+
+        return raw_text
+
+    def listen_for_direct_command(self, duration: float = 6.0) -> str:
+        """Alias for listen_raw_command."""
+        return self.listen_raw_command(timeout=duration)
 
     def _transcribe_audio(self, audio: sr.AudioData) -> str:
         """Transcribes recorded AudioData using domain-conditioned Whisper STT with Google STT fallback."""
