@@ -494,7 +494,7 @@ class ModernHomeDashboard(tk.Tk):
 
         self.model_combo = ttk.Combobox(
             header_frame,
-            values=["jarvis-trained-model", "jarvis-custom", "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b", "deepseek-r1:8b"],
+            values=["jarvis-trained-model"],
             state="readonly",
             width=20,
             font=("Helvetica", 9)

@@ -214,14 +214,9 @@ class JarvisHUDWindow(QMainWindow):
             }
         """)
 
-        # Add models dynamically with default ultra-fast at index 0
+        # Exclusively use fine-tuned jarvis-trained-model
         self.model_selector.addItems([
-            "jarvis-trained-model",
-            "jarvis-custom",
-            "qwen3.5:2b",
-            "qwen3.5:4b",
-            "qwen3.5:9b",
-            "deepseek-r1:8b"
+            "jarvis-trained-model"
         ])
         self.model_selector.currentTextChanged.connect(self._on_model_changed)
         top_bar.addWidget(self.model_selector)

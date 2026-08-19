@@ -34,7 +34,7 @@ except ImportError:
     WIN32_AVAILABLE = False
 
 DEFAULT_MODEL = "jarvis-trained-model"
-CUSTOM_MODEL_CANDIDATES = ["jarvis-trained-model", "jarvis-custom", "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b"]
+CUSTOM_MODEL_CANDIDATES = ["jarvis-trained-model"]
 
 
 class DeviceAction(BaseModel):
@@ -421,9 +421,10 @@ Available Target Devices & Capabilities:
 Contextual Reasoning Guidelines:
 - Freezing / cold: set thermostat to 24.0°C and turn on living room light.
 - Bed / goodnight: turn off lights and lock the front door.
-- Movie mode: set living room light and turn on entertainment unit.
+- Movie mode / movie night: turn on entertainment_unit and turn on living_room_light.
 - Leaving / heading out: lock front door and lock PC.
 - YouTube / web search: open website with search query string in value.
+- Chit-chat / Greetings / Thanks / Questions: return actions: [].
 """
 
     def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
@@ -490,10 +491,14 @@ Contextual Reasoning Guidelines:
                     resp_json = resp.json()
                     msg = resp_json.get("message", {})
                     raw_content = msg.get("content", "").strip()
-                    if not raw_content and msg.get("thinking"):
-                        raw_content = msg.get("thinking", "").strip()
+                    thinking = msg.get("thinking", "").strip()
+                    if not raw_content and thinking:
+                        raw_content = thinking
 
                     cleaned_json_str = self._clean_llm_json(raw_content)
+                    if '{' not in cleaned_json_str and '{' in thinking:
+                        cleaned_json_str = self._clean_llm_json(thinking)
+
                     parsed_data = json.loads(cleaned_json_str)
 
                     parsed_data["raw_prompt"] = clean_prompt
@@ -550,5 +555,9 @@ Contextual Reasoning Guidelines:
         first_brace = text.find('{')
         last_brace = text.rfind('}')
         if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-            text = text[first_brace:last_brace + 1]
-        return text
+            return text[first_brace:last_brace + 1]
+
+        # If no JSON braces found but text exists, wrap as conversational JSON
+        if text:
+            return json.dumps({"spoken_response": text, "actions": []})
+        return "{}"

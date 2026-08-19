@@ -10,11 +10,7 @@ class LLMManager:
     """Dynamic Ollama LLM Manager supporting asynchronous streaming, model switching, auto-pulling missing GGUF models, and offline fallback handling."""
 
     AVAILABLE_MODELS = {
-        "fine-tuned": "jarvis-trained-model", # Default fine-tuned agentic model
-        "ultra-fast": "qwen3.5:2b",  # Default baseline model
-        "fast": "qwen3.5:4b",        # Balanced conversational model
-        "task": "qwen3.5:9b",        # Structured task execution
-        "reasoning": "deepseek-r1:8b" # Deep reasoning engine
+        "fine-tuned": "jarvis-trained-model" # Dedicated fine-tuned agentic model
     }
 
     SYSTEM_PROMPT = (
