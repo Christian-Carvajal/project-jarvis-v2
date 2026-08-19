@@ -33,8 +33,8 @@ try:
 except ImportError:
     WIN32_AVAILABLE = False
 
-DEFAULT_MODEL = "qwen3.5:2b"
-CUSTOM_MODEL_CANDIDATES = ["jarvis-custom", "jarvis-trained-model", "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b"]
+DEFAULT_MODEL = "jarvis-trained-model"
+CUSTOM_MODEL_CANDIDATES = ["jarvis-trained-model", "jarvis-custom", "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b"]
 
 
 class DeviceAction(BaseModel):

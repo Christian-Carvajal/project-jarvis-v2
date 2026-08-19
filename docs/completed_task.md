@@ -43,3 +43,15 @@
 - Exported raw JSON results to [`benchmarks/baseline_qwen3.5_2b_results.json`](../benchmarks/baseline_qwen3.5_2b_results.json).
 - Documented full benchmark analysis and pre-training baseline results in [`docs/baseline_benchmark_results.md`](baseline_benchmark_results.md) and [`benchmarks/README.md`](../benchmarks/README.md) for comparative evaluation against fine-tuned weights.
 
+### Phase 7: Fine-Tuned Model Integration (`jarvis-trained-model`) & Comparative Evaluation
+- Integrated custom LoRA fine-tuned model (`jarvis-trained-model`) into active system configuration across `src/ai_engine.py`, `src/main.py`, `src/home_simulator.py`, `core/llm_manager.py`, `core/voice_pipeline.py`, and `ui/hud_window.py`.
+- Developed side-by-side comparative benchmark harness (`benchmark_compare.py`) evaluating `qwen3.5:2b` (Baseline) vs. `jarvis-trained-model` (Fine-Tuned).
+- Verified key empirical improvements:
+  * **Chit-Chat Null-Action Accuracy:** Improved from **66.7% to 100.0%**, successfully resolving the baseline `[CHAT-02]` action hallucination flaw (*"Thank you for your help"* $\rightarrow$ `actions: []`).
+  * **Inference Latency:** Reduced by **38.5%** from 10.11s down to **6.22s** average latency.
+  * **Token Generation Throughput:** Increased by **56.8%** from 47.7 tok/s up to **74.8 tokens/sec**.
+  * **Overall Benchmark Score:** Achieved **100.0% (15/15)** comprehensive pass rate.
+- Exported comparative analysis artifacts to [`benchmarks/model_comparison_results.json`](../benchmarks/model_comparison_results.json) and [`benchmarks/model_comparison_results.md`](../benchmarks/model_comparison_results.md).
+- Updated academic report generator (`generate_report.py`) with empirical scorecard, LoRA hyperparameters (Rank 16, Alpha 16, 40 steps, loss converged to ~0.046), and compiled the final 3-page `Prelim_Project_Report.pdf`.
+
+

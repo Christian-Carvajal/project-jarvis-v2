@@ -59,7 +59,7 @@ class JarvisVirtualAssistant:
 
         # 1. Core Modules
         self.state_machine = SmartHomeStateMachine(log_filepath=LOG_FILE)
-        self.ai = AIEngine(model_name="qwen3.5:2b")
+        self.ai = AIEngine(model_name="jarvis-trained-model")
         self.ai_engine = self.ai  # Alias for backward compatibility
         self.voice = VoicePipeline()
         self.voice_pipeline = self.voice  # Alias for backward compatibility
