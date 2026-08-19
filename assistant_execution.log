@@ -205,3 +205,238 @@ PARSED JSON PAYLOAD:
 STATE TRANSITIONS: PC Action: lock -> lock_pc; Front Door Lock: LOCKED -> LOCKED
 EXECUTION LATENCY: 5776.31 ms (5.78 s)
 ======================================================================
+Could not import comtypes.gen, trying to create it.
+Created comtypes.gen directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+Writing __init__.py file: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen\__init__.py'
+Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+Could not import comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4: No module named 'comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4'
+# Generating comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4
+# Generating comtypes.gen.SpeechLib
+Could not import comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0: No module named 'comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0'
+# Generating comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0
+# Generating comtypes.gen.stdole
+HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.584 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:02.528
+VAD filter removed 00:02.528 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:01.168 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-18T17:36:36.773645
+VOICE TRANSCRIPTION: "hi jarvis, hi jarvis, hi jarvis, hi jarvis"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "I have received your command: 'hi jarvis, hi jarvis, hi jarvis, hi jarvis', sir.",
+  "actions": [],
+  "raw_prompt": "hi jarvis, hi jarvis, hi jarvis, hi jarvis",
+  "interpreted_intent": "offline_fallback"
+}
+STATE TRANSITIONS: None
+EXECUTION LATENCY: 3566.44 ms (3.57 s)
+======================================================================
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.440 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.552 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:00.400 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.144 of audio
+Processing audio with duration 00:02.464
+VAD filter removed 00:00.528 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.032 of audio
+Processing audio with duration 00:02.432
+VAD filter removed 00:01.552 of audio
+Processing audio with duration 00:00.832
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.080 of audio
+Processing audio with duration 00:03.360
+VAD filter removed 00:00.672 of audio
+Processing audio with duration 00:01.696
+VAD filter removed 00:00.368 of audio
+Processing audio with duration 00:03.264
+VAD filter removed 00:00.896 of audio
+Processing audio with duration 00:01.600
+VAD filter removed 00:00.016 of audio
+Processing audio with duration 00:00.928
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:02.944
+VAD filter removed 00:01.200 of audio
