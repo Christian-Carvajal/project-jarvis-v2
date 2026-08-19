@@ -61,16 +61,32 @@ logger = logging.getLogger("JarvisLogger")
 
 
 def find_best_hardware_microphone() -> Optional[int]:
-    """Scans audio devices and selects the physical hardware microphone, bypassing virtual webcams (Iriun/Camo)."""
+    """
+    Scans audio input devices on Windows and automatically selects the highest-quality
+    physical hardware microphone array, bypassing virtual loopbacks and webcam audio.
+    """
     if not HAS_SOUNDDEVICE:
         return None
 
     try:
         devices = sd.query_devices()
-        avoid_keywords = ['iriun', 'stereo mix', 'virtual', 'mapper', 'camo', 'line in']
-        preferred_keywords = ['intel', 'array', 'realtek', 'nvidia broadcast', 'microphone']
+        avoid_keywords = ['iriun', 'stereo mix', 'virtual', 'mapper', 'camo', 'droidcam', 'line in', 'steam']
+        preferred_keywords = ['microphone array', 'realtek', 'amd audio', 'intel', 'nvidia broadcast', 'usb audio', 'headset', 'mic']
 
-        # 1. Prioritize physical hardware mic array
+        # 1. Check Windows default input device first
+        try:
+            default_in = sd.default.device[0]
+            if default_in is not None and default_in >= 0 and default_in < len(devices):
+                dev = devices[default_in]
+                if dev['max_input_channels'] > 0:
+                    name_lower = dev['name'].lower()
+                    if not any(avoid in name_lower for avoid in avoid_keywords):
+                        print(f"[STT Mic Selection]: Using Windows Default Hardware Microphone '{dev['name']}' (Index {default_in}).")
+                        return default_in
+        except Exception:
+            pass
+
+        # 2. Prioritize dedicated hardware microphone array
         for idx, dev in enumerate(devices):
             if dev['max_input_channels'] > 0:
                 name_lower = dev['name'].lower()
@@ -80,7 +96,7 @@ def find_best_hardware_microphone() -> Optional[int]:
                     print(f"[STT Mic Selection]: Selected hardware microphone '{dev['name']}' (Index {idx}).")
                     return idx
 
-        # 2. Fallback to first non-virtual input device
+        # 3. Fallback to first non-virtual input device
         for idx, dev in enumerate(devices):
             if dev['max_input_channels'] > 0:
                 name_lower = dev['name'].lower()
@@ -198,7 +214,7 @@ class TTSEngine:
             pygame.mixer.music.play()
 
             while pygame.mixer.music.get_busy() and not self._halt_flag.is_set():
-                time.sleep(0.05)
+                time.sleep(0.04)
 
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
@@ -245,18 +261,86 @@ class TTSEngine:
 
 class VoicePipeline:
     """
-    Offline Voice Pipeline with Silero VAD Voice Activity Detection,
-    Gain Normalization, Domain-Conditioned Whisper STT, and British JARVIS TTS.
+    Studio-Grade Voice Pipeline:
+    - High-Pass Noise Reduction & Dynamic Software AGC (Automatic Gain Control)
+    - Pre-Roll Ring Buffer (Ensures zero truncated onset syllables)
+    - Low-Latency Silero VAD Speech Slicing (~250ms trailing silence cut)
+    - Domain-Conditioned Whisper STT (Snappy command & application recognition)
+    - Single-Turn Immediate Response Dispatching
+    - Authentic British JARVIS Voice (Edge-TTS en-GB-RyanNeural)
     """
 
     DOMAIN_PROMPT = (
-        "JARVIS AI virtual assistant voice commands: "
+        "JARVIS virtual assistant voice commands: "
         "Hey Jarvis, Hi Jarvis, Hello Jarvis, Jarvis, "
-        "turn on the living room light, turn off the light, set brightness to 50, "
-        "set temperature to 24 degrees, lock the front door, unlock the door, "
-        "movie night mode, goodnight jarvis, open brave, open chrome, close notepad, "
-        "play music on spotify, open youtube and search for music, volume up, lock my pc."
+        "open Spotify, play music on Spotify, open YouTube and search, "
+        "open Chrome, open Brave, open Edge, open Firefox, "
+        "open Notepad, open Calculator, open VS Code, open Discord, "
+        "open Steam, open File Explorer, open Task Manager, open Settings, "
+        "open Control Panel, open Paint, open Word, open Excel, open Teams, "
+        "open PowerPoint, open Outlook, open Telegram, open WhatsApp, "
+        "turn on living room light, turn off bedroom light, set brightness to 50 percent, "
+        "set temperature to 24 degrees, movie night mode, goodnight Jarvis, "
+        "lock my PC, take a screenshot, system status, what time is it, "
+        "pause music, skip song, volume up, volume down, mute."
     )
+
+    PHONETIC_CORRECTIONS = {
+        # Spotify
+        "spotty": "spotify",
+        "spot if i": "spotify",
+        "spotifi": "spotify",
+        "spottily": "spotify",
+        "sportify": "spotify",
+        "spotify app": "spotify",
+        # YouTube
+        "you tube": "youtube",
+        "u tube": "youtube",
+        "youtube app": "youtube",
+        # Notepad
+        "note pad": "notepad",
+        "not pad": "notepad",
+        "notepad app": "notepad",
+        # Calculator
+        "calc": "calculator",
+        "calculator app": "calculator",
+        # Browsers
+        "brave browser": "brave",
+        "google chrome": "chrome",
+        "chrome browser": "chrome",
+        "ms edge": "edge",
+        "microsoft edge": "edge",
+        # VS Code
+        "vs code": "vs code",
+        "visual studio code": "vs code",
+        "vs code app": "vs code",
+        "vscode": "vs code",
+        # Discord
+        "disk cord": "discord",
+        "dis cord": "discord",
+        "discord app": "discord",
+        # Steam
+        "steam app": "steam",
+        # File Explorer
+        "file explore": "file explorer",
+        "files explorer": "file explorer",
+        "explorer": "file explorer",
+        # Task Manager
+        "task manage": "task manager",
+        # Teams
+        "microsoft teams": "teams",
+        "team's": "teams",
+        # Paint
+        "ms paint": "paint",
+        # Settings
+        "setting": "settings",
+        "system settings": "settings",
+        # Volume
+        "volume up": "volume up",
+        "volume down": "volume down",
+        "turn up volume": "volume up",
+        "turn down volume": "volume down",
+    }
 
     def __init__(self, wake_words: Optional[list] = None):
         self.wake_words = [w.lower() for w in (wake_words or ["jarvis", "hey jarvis", "hi jarvis", "hello jarvis", "okay jarvis"])]
@@ -275,8 +359,8 @@ class VoicePipeline:
                 print(f"[VAD Model Notice: {e}]")
 
             try:
-                self.whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
-                print("[STT Engine]: Faster-Whisper + Silero VAD initialized.")
+                self.whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+                print("[STT Engine]: Faster-Whisper 'small' + Silero VAD initialized.")
             except Exception as e:
                 print(f"[Whisper load notice: {e}]")
 
@@ -293,6 +377,19 @@ class VoicePipeline:
         self.is_mic_muted = not self.is_mic_muted
         return self.is_mic_muted
 
+    def normalize_speech_text(self, text: str) -> str:
+        """Normalizes common speech phonetic misrecognitions for commands and applications."""
+        if not text:
+            return ""
+        clean = text.strip()
+        clean_lower = clean.lower()
+
+        for phonetic, target in self.PHONETIC_CORRECTIONS.items():
+            if phonetic in clean_lower:
+                clean_lower = clean_lower.replace(phonetic, target)
+
+        return clean_lower
+
     def filter_wake_word(self, transcript: str) -> Tuple[bool, str]:
         """
         Flexible Wake-Word Gating with Fragment Protection:
@@ -303,7 +400,7 @@ class VoicePipeline:
         if not transcript:
             return False, ""
 
-        clean = transcript.lower().strip()
+        clean = self.normalize_speech_text(transcript)
 
         # Phonetic match for jarvis / common variations
         wake_pattern = r'\b(?:hey|hi|hello|ok|okay|yo|please)?\s*(?:jarvisst|jarvist|jarvis|javis|jarvas|travis)\b'
@@ -324,22 +421,29 @@ class VoicePipeline:
 
         return True, sanitized
 
-    def record_audio_with_vad(self, duration: float = 4.0, sample_rate: int = 16000) -> Optional[sr.AudioData]:
+    def record_audio_with_vad(self, duration: float = 5.0, sample_rate: int = 16000) -> Optional[sr.AudioData]:
         """
-        Captures microphone audio using Silero VAD frame streaming and trailing silence auto-slicing.
-        Ensures spoken sentences are NEVER cut off mid-speech.
+        Studio-grade microphone capture featuring:
+        1. Pre-roll Ring Buffer (6 frames / ~192ms) ensuring first syllables are never cut off.
+        2. DC Offset Removal & High-Pass Filtering (removes sub-80Hz low rumble/hum).
+        3. Dynamic Software AGC (Automatic Gain Control) normalizing speech to ~28,500 16-bit PCM.
+        4. Low-Latency Silero VAD Trailing Silence Slicing (~250ms response cutoff).
         """
         if not HAS_SOUNDDEVICE or self.is_mic_muted:
             return None
 
-        block_size = 512  # ~32ms per frame
+        block_size = 512  # ~32ms per frame at 16kHz
         max_frames = int((duration * sample_rate) / block_size)
-        max_silence_frames = 12  # ~380ms trailing silence threshold
+        max_silence_frames = 6   # ~192ms trailing silence cutoff — snappier auto-slice
+        pre_roll_limit = 6       # ~192ms pre-speech ring buffer
 
         try:
+            pre_roll_buffer = []
             audio_frames = []
             speech_detected = False
             silent_frames = 0
+            hp_prev_in = 0.0
+            hp_prev_out = 0.0
 
             with sd.InputStream(
                 samplerate=sample_rate,
@@ -350,22 +454,52 @@ class VoicePipeline:
             ) as stream:
                 for _ in range(max_frames):
                     frame, _ = stream.read(block_size)
-                    flat_frame = frame.flatten()
-                    audio_frames.append(flat_frame)
+                    flat = frame.flatten()
 
+                    # 1. DC Offset Removal
+                    flat = flat - np.mean(flat)
+
+                    # 2. Simple High-Pass Filter (removes sub-80Hz electrical/room rumble)
+                    filtered = np.empty_like(flat)
+                    for i in range(len(flat)):
+                        hp_prev_out = 0.94 * (hp_prev_out + flat[i] - hp_prev_in)
+                        hp_prev_in = flat[i]
+                        filtered[i] = hp_prev_out
+
+                    # Maintain Pre-Roll Ring Buffer
+                    if not speech_detected:
+                        pre_roll_buffer.append(filtered)
+                        if len(pre_roll_buffer) > pre_roll_limit:
+                            pre_roll_buffer.pop(0)
+
+                    # 3. Silero VAD Speech Activity Check
+                    is_voice_frame = False
                     if self.vad_model:
                         try:
-                            prob = float(self.vad_model(flat_frame)[0])
-                            if prob > 0.45:
-                                speech_detected = True
-                                silent_frames = 0
-                            elif speech_detected:
-                                silent_frames += 1
-                                if silent_frames >= max_silence_frames:
-                                    # User finished speaking -> Slice immediately!
-                                    break
+                            prob = float(self.vad_model(filtered)[0])
+                            if prob > 0.38:
+                                is_voice_frame = True
                         except Exception:
-                            pass
+                            # Energy fallback
+                            if np.max(np.abs(filtered)) > 0.015:
+                                is_voice_frame = True
+                    else:
+                        if np.max(np.abs(filtered)) > 0.015:
+                            is_voice_frame = True
+
+                    if is_voice_frame:
+                        if not speech_detected:
+                            speech_detected = True
+                            # Prepend captured pre-roll buffer to preserve onset consonants!
+                            audio_frames.extend(pre_roll_buffer)
+                        audio_frames.append(filtered)
+                        silent_frames = 0
+                    elif speech_detected:
+                        audio_frames.append(filtered)
+                        silent_frames += 1
+                        if silent_frames >= max_silence_frames:
+                            # User finished speaking -> Slice immediately!
+                            break
 
             if not audio_frames:
                 return None
@@ -373,12 +507,16 @@ class VoicePipeline:
             raw_audio = np.concatenate(audio_frames)
             max_val = np.max(np.abs(raw_audio))
 
-            if max_val < 0.004:
+            # Faint noise gate threshold
+            if max_val < 0.003:
                 return None
 
-            # Gain Normalization: Boosts quiet voices and normalizes volume
-            normalized = (raw_audio / (max_val + 1e-5) * 28000.0).astype(np.int16)
+            # 4. Dynamic Software AGC (Automatic Gain Control)
+            # Boosts quiet speech to optimal Whisper volume (~28,500 in 16-bit PCM) without distortion
+            gain_factor = min(28500.0 / (max_val + 1e-5), 32000.0)
+            normalized = (raw_audio * gain_factor).clip(-32767, 32767).astype(np.int16)
             pcm_bytes = normalized.tobytes()
+
             return sr.AudioData(pcm_bytes, sample_rate, 2)
 
         except Exception as e:
@@ -395,7 +533,7 @@ class VoicePipeline:
             time.sleep(0.2)
             return False, ""
 
-        audio = self.record_audio_with_vad(duration=4.5)
+        audio = self.record_audio_with_vad(duration=5.0)
         if not audio:
             return False, ""
 
@@ -403,7 +541,7 @@ class VoicePipeline:
         if not raw_text:
             return False, ""
 
-        if raw_text in ["you", "thank you", "thanks", "bye", "subtitles"]:
+        if raw_text in ["you", "thank you", "thanks", "bye", "subtitles", "thank you for watching"]:
             return False, ""
 
         is_wake, clean_cmd = self.filter_wake_word(raw_text)
@@ -420,7 +558,7 @@ class VoicePipeline:
 
     def listen_raw_command(self, timeout: float = 6.0) -> str:
         """
-        Listens directly for the user's follow-up command when in ACTIVE_COMMAND mode.
+        Listens directly for the user's follow-up or manual voice trigger command.
         (Does NOT require repeating 'Hey Jarvis').
         Returns:
             transcribed_command: str
@@ -433,16 +571,15 @@ class VoicePipeline:
             return ""
 
         raw_text = self._transcribe_audio(audio).strip()
-        if not raw_text or raw_text.lower() in ["you", "thank you", "thanks", "bye", "subtitles"]:
+        if not raw_text or raw_text.lower() in ["you", "thank you", "thanks", "bye", "subtitles", "thank you for watching"]:
             return ""
 
-        # Clean any repeated wake words if user happened to say it again
-        clean_text = raw_text.lower()
+        clean_text = self.normalize_speech_text(raw_text)
         if "jarvis" in clean_text:
             _, extracted_cmd = self.filter_wake_word(clean_text)
-            return extracted_cmd or raw_text
+            return extracted_cmd or clean_text
 
-        return raw_text
+        return clean_text
 
     def listen_for_direct_command(self, duration: float = 6.0) -> str:
         """Alias for listen_raw_command."""
@@ -466,7 +603,7 @@ class VoicePipeline:
                     language="en",
                     initial_prompt=self.DOMAIN_PROMPT,
                     vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=250)
+                    vad_parameters=dict(min_silence_duration_ms=200)
                 )
                 text = " ".join([s.text for s in segments]).strip()
                 try:
@@ -475,11 +612,13 @@ class VoicePipeline:
                     pass
 
                 if text:
-                    return text
+                    return self.normalize_speech_text(text)
             except Exception as e:
                 print(f"[Whisper STT Notice: {e}]")
 
         try:
-            return self.recognizer.recognize_google(audio)
+            res = self.recognizer.recognize_google(audio)
+            return self.normalize_speech_text(res)
         except Exception:
             return ""
+

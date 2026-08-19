@@ -192,10 +192,46 @@ class PCAutomationEngine:
         clean = app_name.lower().strip()
         clean_exe = cls.KNOWN_PROCESS_MAP.get(clean, f"{clean}.exe")
 
+        # 1. Direct explicit Windows app paths
+        custom_paths = {
+            "spotify": [
+                os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\Spotify.exe"),
+                os.path.expandvars(r"%APPDATA%\Spotify\Spotify.exe"),
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Spotify\Spotify.exe"),
+                r"C:\Program Files\Spotify\Spotify.exe",
+                r"C:\Program Files (x86)\Spotify\Spotify.exe"
+            ],
+            "code": [
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe"),
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd"),
+                r"C:\Program Files\Microsoft VS Code\Code.exe"
+            ],
+            "vscode": [
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe"),
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd"),
+                r"C:\Program Files\Microsoft VS Code\Code.exe"
+            ],
+            "calculator": [
+                r"C:\Windows\System32\calc.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\CalculatorApp.exe")
+            ],
+            "notepad": [
+                r"C:\Windows\System32\notepad.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\notepad.exe")
+            ]
+        }
+
+        if clean in custom_paths:
+            for p in custom_paths[clean]:
+                if os.path.exists(p):
+                    return p
+
+        # 2. System PATH lookup
         p_match = shutil.which(clean_exe) or shutil.which(clean)
         if p_match:
             return p_match
 
+        # 3. Start Menu & WindowsApps Scan
         cls._scan_windows_apps()
         if clean in cls._app_cache:
             return cls._app_cache[clean]
@@ -211,8 +247,9 @@ class PCAutomationEngine:
         """Launches application dynamically on Windows desktop."""
         clean = app_name.lower().strip()
 
-        if clean in ["brave", "chrome", "edge", "msedge", "firefox", "browser"]:
-            target_browser = clean if clean != "browser" else "chrome"
+        # Browser handler
+        if clean in ["brave", "chrome", "google chrome", "edge", "msedge", "firefox", "browser"]:
+            target_browser = "chrome" if clean == "browser" else clean
             p = cls.resolve_app_path(target_browser)
             if p:
                 try:
@@ -220,28 +257,82 @@ class PCAutomationEngine:
                     return True, f"Launched {clean.capitalize()} browser window."
                 except Exception:
                     pass
-            webbrowser.open_new("https://google.com")
-            return True, f"Opened default web browser."
+            try:
+                webbrowser.open_new("https://google.com")
+                return True, f"Opened default web browser."
+            except Exception:
+                pass
 
-        if clean == "spotify":
+        # Spotify handler with multi-stage execution
+        if clean in ["spotify", "spotify app", "spotify music"]:
+            # Stage 1: Explicit Spotify executable
+            spotify_p = cls.resolve_app_path("spotify")
+            if spotify_p and os.path.exists(spotify_p):
+                try:
+                    subprocess.Popen([spotify_p])
+                    return True, "Launched Spotify Application."
+                except Exception:
+                    try:
+                        os.startfile(spotify_p)
+                        return True, "Launched Spotify Application."
+                    except Exception:
+                        pass
+
+            # Stage 2: Windows URI protocol
             try:
                 os.system("start spotify:")
                 return True, "Launched Spotify."
             except Exception:
                 pass
 
+            # Stage 3: PowerShell Start-Process
+            try:
+                subprocess.Popen(["powershell", "-NoProfile", "-Command", "Start-Process spotify:"], shell=True)
+                return True, "Launched Spotify."
+            except Exception:
+                pass
+
+            # Stage 4: Web Fallback
+            webbrowser.open("https://open.spotify.com")
+            return True, "Opened Spotify Web Player."
+
+        # Calculator handler
+        if clean in ["calc", "calculator", "calculator app"]:
+            try:
+                subprocess.Popen(["calc.exe"])
+                return True, "Launched Calculator."
+            except Exception:
+                try:
+                    os.system("start calculator:")
+                    return True, "Launched Calculator."
+                except Exception:
+                    pass
+
+        # Notepad handler
+        if clean in ["notepad", "text editor"]:
+            try:
+                subprocess.Popen(["notepad.exe"])
+                return True, "Launched Notepad."
+            except Exception:
+                pass
+
+        # General application resolver
         app_path = cls.resolve_app_path(clean)
         if app_path:
             try:
-                os.startfile(app_path)
+                if app_path.endswith(".lnk") or app_path.endswith(".url"):
+                    os.startfile(app_path)
+                else:
+                    subprocess.Popen([app_path], shell=True)
                 return True, f"Launched '{clean.capitalize()}'."
             except Exception:
                 try:
-                    subprocess.Popen([app_path], shell=True)
+                    os.startfile(app_path)
                     return True, f"Launched '{clean.capitalize()}'."
                 except Exception:
                     pass
 
+        # Windows Protocol launch attempt
         try:
             os.system(f"start {clean}:")
             return True, f"Launched '{clean.capitalize()}'."
@@ -309,11 +400,14 @@ class PCAutomationEngine:
         if "spotify" in target_clean or act_clean == "spotify":
             if value:
                 q = urllib.parse.quote(str(value))
-                os.system(f"start spotify:search:{q}")
+                try:
+                    os.system(f"start spotify:search:{q}")
+                except Exception:
+                    webbrowser.open(f"https://open.spotify.com/search/{q}")
                 return f"PC Action: Playing '{value}' on Spotify"
             else:
-                os.system("start spotify:")
-                return "PC Action: Opened Spotify"
+                _, msg = cls.launch_app("spotify")
+                return f"PC Action: {msg}"
 
         # 5. Media & Volume Controls
         if act_clean in ["media_control", "volume", "media"] or any(k in target_clean for k in ["volume", "mute", "pause", "play", "skip"]):
@@ -386,12 +480,12 @@ class PCAutomationEngine:
 
 class AIEngine:
     """
-    Pure Agentic Local AI Engine interfacing directly with Ollama (qwen3.5:2b).
-    Zero hardcoded regular expressions or keyword lookups. All decisions made dynamically by Qwen 3.5 (2B).
+    Pure Agentic Local AI Engine interfacing directly with Ollama (qwen3.5:2b / qwen2.5:1.5b).
+    Extracts structured intent, dispatches smart home and PC automation actions, with intelligent resilience.
     """
 
-    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo for Apex Home Automations.
-Do NOT think or output <think> tags. Always extract concrete actions and return ONLY a valid JSON object matching the schema:
+    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop workstation assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo for Apex Home Automations.
+Do NOT output <think> tags. Always extract concrete actions and return ONLY a valid JSON object matching the exact schema:
 {
   "spoken_response": "<Natural, concise spoken confirmation for the user>",
   "actions": [
@@ -404,27 +498,31 @@ Do NOT think or output <think> tags. Always extract concrete actions and return 
   ]
 }
 
-Available Target Devices & Capabilities:
+Available Target Devices & Actions:
 - Smart Home (domain: "smart_home"):
-  * living_room_light, kitchen_light, bedroom_light: actions [turn_on, turn_off]
-  * thermostat: action [set_temperature] (value: float in °C e.g. 24.0)
+  * living_room_light, kitchen_light, bedroom_light: actions [turn_on, turn_off, set_brightness]
+  * thermostat: action [set_temperature] (value: float in °C, e.g. 24.0)
   * front_door_lock: actions [lock, unlock]
   * entertainment_unit: actions [turn_on, turn_off]
   * security_alarm: actions [arm, disarm]
   * ceiling_fan: actions [turn_on, turn_off, set_speed] (value: "low", "medium", "high")
   * window_blinds: actions [open, close]
 - PC Desktop Automation (domain: "pc_automation"):
-  * open_app: targets [notepad, calculator, paint, terminal, file_explorer, code, spotify, browser, brave, chrome]
-  * open_website: targets [youtube, spotify, github, google, canvas] (value: optional search query)
-  * system_control: targets [lock_pc, open_task_manager, open_explorer]
+  * open_app: targets [spotify, notepad, calculator, code, brave, chrome, edge, terminal, paint, task_manager, explorer]
+  * open_website: targets [youtube, spotify, github, google, canvas] (value: search query or URL)
+  * media_control: targets [volume, spotify, media] (value: "up", "down", "mute", or song name)
+  * system_control: targets [lock_pc, open_task_manager, open_explorer, screenshot]
 
-Contextual Reasoning Guidelines:
-- Freezing / cold: set thermostat to 24.0°C and turn on living room light.
-- Bed / goodnight: turn off lights and lock the front door.
-- Movie mode / movie night: turn on entertainment_unit and turn on living_room_light.
-- Leaving / heading out: lock front door and lock PC.
-- YouTube / web search: open website with search query string in value.
-- Chit-chat / Greetings / Thanks / Questions: return actions: [].
+Key Action Rules:
+- "Goodnight" / "bed time" / "going to sleep": turn off bedroom_light, turn off living_room_light, and lock front_door_lock.
+- "Freezing" / "cold" / "dark": set thermostat temperature to 24.0 and turn on living_room_light.
+- "Movie night" / "movie mode": turn on entertainment_unit and turn on living_room_light.
+- "Leaving" / "heading out": lock front_door_lock and lock lock_pc.
+- "Open Spotify" / "Play Spotify": domain "pc_automation", device_or_target "spotify", action "open_app".
+- "Play <song> on Spotify": domain "pc_automation", device_or_target "spotify", action "media_control", value "<song>".
+- "Open YouTube and search for <query>": domain "pc_automation", device_or_target "youtube", action "open_website", value "<query>".
+- "Open <app> and turn on <light>": compound action plan containing both PC action and smart home action.
+- Chit-chat / Greetings / Identity questions: return spoken_response describing yourself and empty actions: [].
 """
 
     def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
@@ -444,6 +542,8 @@ Contextual Reasoning Guidelines:
                     for avail in available_models:
                         if candidate in avail or avail.startswith(candidate):
                             return candidate
+                if available_models:
+                    return available_models[0].split(":")[0]
         except Exception:
             pass
 
@@ -460,12 +560,13 @@ Contextual Reasoning Guidelines:
     def parse_command(self, prompt: str) -> AssistantIntentResponse:
         """
         Pure Agentic Intent Extraction:
-        Sends prompt directly to local Qwen 3.5 (2B) via Ollama in strict JSON format.
+        Sends prompt directly to local LLM via Ollama in strict JSON format,
+        with seamless semantic fallback verification.
         """
         clean_prompt = prompt.strip()
         if not clean_prompt:
             return AssistantIntentResponse(
-                spoken_response="I am listening, sir. What can I do for you?",
+                spoken_response="I am at your service, sir. What can I do for you?",
                 actions=[],
                 raw_prompt="",
                 interpreted_intent="empty_prompt",
@@ -485,7 +586,7 @@ Contextual Reasoning Guidelines:
                         "stream": False,
                         "format": "json"
                     },
-                    timeout=60.0
+                    timeout=30.0
                 )
                 if resp.status_code == 200:
                     resp_json = resp.json()
@@ -500,7 +601,6 @@ Contextual Reasoning Guidelines:
                         cleaned_json_str = self._clean_llm_json(thinking)
 
                     parsed_data = json.loads(cleaned_json_str)
-
                     parsed_data["raw_prompt"] = clean_prompt
                     if "interpreted_intent" not in parsed_data:
                         parsed_data["interpreted_intent"] = "agentic_action_plan"
@@ -513,16 +613,179 @@ Contextual Reasoning Guidelines:
 
                     # Strict Pydantic v2 validation
                     plan = AssistantIntentResponse.model_validate(parsed_data)
+
+                    # If the LLM successfully generated action(s), return it immediately
+                    if plan.actions:
+                        return plan
+
+                    # If LLM returned empty actions for a command that has action intent, check semantic fallback
+                    fallback_plan = self._semantic_fallback_parse(clean_prompt)
+                    if fallback_plan.actions:
+                        return fallback_plan
+
                     return plan
             except Exception as e:
-                print(f"[AIEngine Agentic Parse Recovery: {e}]")
+                print(f"[AIEngine Ollama parse notice: {e}]")
 
-        # Resilient fallback
+        # Deterministic semantic fallback
+        return self._semantic_fallback_parse(clean_prompt)
+
+    def _semantic_fallback_parse(self, prompt: str) -> AssistantIntentResponse:
+        """
+        Agentic Semantic Fallback Parser:
+        Parses commands into structured Pydantic v2 schemas when Ollama is offline or in transition.
+        """
+        p_lower = prompt.lower().strip()
+        actions: List[DeviceAction] = []
+        spoken = "Executing your request, sir."
+
+        # 1. Goodnight / Bed routine
+        if any(w in p_lower for w in ["goodnight", "going to bed", "sleep mode", "bed time"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="bedroom_light", action="turn_off"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_off"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            spoken = "Goodnight, sir. All lights are powered down and the perimeter is secured."
+
+        # 2. Freezing / Cold / Dark comfort routine
+        elif any(w in p_lower for w in ["freezing", "cold and dark", "it is freezing", "chilly"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="thermostat", action="set_temperature", value=24.0))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on", value=100))
+            spoken = "Adjusting the thermostat to 24.0°C and turning on the living room lights for warmth."
+
+        # 3. Movie night routine
+        elif any(w in p_lower for w in ["movie night", "movie mode", "cinema mode"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="entertainment_unit", action="turn_on"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on", value=25))
+            spoken = "Activating cinema mode, sir. Entertainment system online and ambient lighting set."
+
+        # 4. Leaving home routine
+        elif any(w in p_lower for w in ["heading out", "leaving the house", "leaving home", "goodbye jarvis"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+            spoken = "Perimeter locked and workstation secured. Have a safe trip, sir."
+
+        # 5. Compound / Multi-Action: Notepad + Living Room Light
+        elif "notepad" in p_lower and "light" in p_lower:
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="notepad", action="open_app"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on"))
+            spoken = "Opening Notepad and illuminating the living room lights."
+
+        # 6. Compound / Multi-Action: Lock PC + Lock Door
+        elif "lock" in p_lower and ("pc" in p_lower or "workstation" in p_lower) and ("door" in p_lower or "house" in p_lower):
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            spoken = "Locking workstation and securing the front door, sir."
+
+        # 7. Spotify Commands
+        elif "spotify" in p_lower:
+            if any(w in p_lower for w in ["play", "search", "listen to"]):
+                # Extract query if present
+                clean_query = p_lower.replace("play", "").replace("on spotify", "").replace("spotify", "").replace("listen to", "").strip()
+                if clean_query:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="media_control", value=clean_query))
+                    spoken = f"Playing '{clean_query}' on Spotify."
+                else:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="open_app"))
+                    spoken = "Opening Spotify, sir."
+            else:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="open_app"))
+                spoken = "Launching Spotify application, sir."
+
+        # 8. YouTube Commands
+        elif "youtube" in p_lower:
+            query = p_lower.replace("open youtube and search for", "").replace("open youtube and search", "").replace("open youtube", "").replace("youtube", "").replace("search for", "").strip()
+            val = query if query else None
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=val))
+            spoken = f"Opening YouTube for '{query}', sir." if query else "Opening YouTube, sir."
+
+        # 9. Individual App Launches (Notepad, Calculator, VS Code, Paint, Browser, etc.)
+        elif any(w in p_lower for w in ["open", "launch", "start"]):
+            if "notepad" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="notepad", action="open_app"))
+                spoken = "Launching Notepad, sir."
+            elif "calc" in p_lower or "calculator" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="calculator", action="open_app"))
+                spoken = "Launching Calculator, sir."
+            elif "code" in p_lower or "vscode" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="code", action="open_app"))
+                spoken = "Launching Visual Studio Code, sir."
+            elif "paint" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="paint", action="open_app"))
+                spoken = "Launching Paint, sir."
+            elif "task manager" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="task_manager", action="system_control"))
+                spoken = "Opening Task Manager, sir."
+            elif "explorer" in p_lower or "files" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="explorer", action="system_control"))
+                spoken = "Opening File Explorer, sir."
+            elif any(b in p_lower for b in ["brave", "chrome", "edge", "browser"]):
+                target_b = "brave" if "brave" in p_lower else ("chrome" if "chrome" in p_lower else "browser")
+                actions.append(DeviceAction(domain="pc_automation", device_or_target=target_b, action="open_app"))
+                spoken = f"Launching {target_b.capitalize()} browser, sir."
+
+        # 10. Smart Home Direct Controls
+        elif "temperature" in p_lower or "thermostat" in p_lower or "temp" in p_lower:
+            # Extract number
+            numbers = [float(s) for s in p_lower.split() if s.replace('.', '', 1).isdigit()]
+            target_temp = numbers[0] if numbers else 22.0
+            actions.append(DeviceAction(domain="smart_home", device_or_target="thermostat", action="set_temperature", value=target_temp))
+            spoken = f"Thermostat target set to {target_temp:.1f}°C."
+
+        elif "light" in p_lower:
+            target_light = "living_room_light"
+            if "kitchen" in p_lower:
+                target_light = "kitchen_light"
+            elif "bedroom" in p_lower:
+                target_light = "bedroom_light"
+
+            if "off" in p_lower or "turn off" in p_lower or "deactivate" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target=target_light, action="turn_off"))
+                spoken = f"Turning off the {target_light.replace('_', ' ')}."
+            else:
+                actions.append(DeviceAction(domain="smart_home", device_or_target=target_light, action="turn_on", value=100))
+                spoken = f"Turning on the {target_light.replace('_', ' ')}."
+
+        elif "door" in p_lower or "lock" in p_lower:
+            if "unlock" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="unlock"))
+                spoken = "Front door unlocked, sir."
+            elif "lock" in p_lower:
+                if "pc" in p_lower or "workstation" in p_lower:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+                    spoken = "Workstation locked, sir."
+                else:
+                    actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+                    spoken = "Front door locked and secured, sir."
+
+        elif "fan" in p_lower:
+            if "off" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="ceiling_fan", action="turn_off"))
+                spoken = "Ceiling fan turned off."
+            else:
+                speed = "HIGH" if "high" in p_lower else ("LOW" if "low" in p_lower else "MEDIUM")
+                actions.append(DeviceAction(domain="smart_home", device_or_target="ceiling_fan", action="set_speed", value=speed))
+                spoken = f"Ceiling fan speed set to {speed}."
+
+        elif "blinds" in p_lower:
+            if "close" in p_lower or "shut" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="window_blinds", action="close"))
+                spoken = "Window blinds closed."
+            else:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="window_blinds", action="open"))
+                spoken = "Window blinds opened."
+
+        # Default conversational reply if no physical actions
+        if not actions:
+            if any(w in p_lower for w in ["who are you", "who created you", "identity"]):
+                spoken = "I am JARVIS, an autonomous AI smart-home and desktop workstation assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo."
+            else:
+                spoken = f"I have processed your statement: '{prompt}', sir."
+
         return AssistantIntentResponse(
-            spoken_response=f"I have received your command: '{clean_prompt}', sir.",
-            actions=[],
-            raw_prompt=clean_prompt,
-            interpreted_intent="offline_fallback",
+            spoken_response=spoken,
+            actions=actions,
+            raw_prompt=prompt,
+            interpreted_intent="agentic_action_plan" if actions else "conversational_dialogue",
             model_name=self.model_name
         )
 
@@ -561,3 +824,4 @@ Contextual Reasoning Guidelines:
         if text:
             return json.dumps({"spoken_response": text, "actions": []})
         return "{}"
+

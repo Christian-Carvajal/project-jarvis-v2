@@ -3,43 +3,49 @@
 
 
 ======================================================================
-TIMESTAMP: 2026-08-19T15:59:04.293064
+TIMESTAMP: 2026-08-20T04:03:26.310354
 VOICE TRANSCRIPTION: "It is freezing and dark in here"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "It's freezing and dark, I'll set the thermostat to 24.0\u00b0C and turn on the living room light.",
+  "spoken_response": "I have turned on the living room light and set the thermostat to 24.0 to warm you up and brighten the room.",
   "actions": [
-    {
-      "domain": "smart_home",
-      "device_or_target": "thermostat",
-      "action": "set_temperature",
-      "value": 24.0
-    },
     {
       "domain": "smart_home",
       "device_or_target": "living_room_light",
       "action": "turn_on",
       "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "thermostat",
+      "action": "set_temperature",
+      "value": 24.0
     }
   ],
   "raw_prompt": "It is freezing and dark in here",
   "interpreted_intent": "agentic_action_plan",
   "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 517,
-  "eval_count": 201,
-  "eval_duration_ms": 2940.077
+  "prompt_eval_count": 660,
+  "eval_count": 121,
+  "eval_duration_ms": 961.946
 }
-STATE TRANSITIONS: Climate Thermostat: 22.0°C (AUTO) -> 24.0°C (HEAT); Living Room Light: OFF -> ON (100%)
-EXECUTION LATENCY: 7438.25 ms (7.44 s)
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); Climate Thermostat: 22.0°C (AUTO) -> 24.0°C (HEAT)
+EXECUTION LATENCY: 12175.51 ms (12.18 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-19T15:59:13.501361
+TIMESTAMP: 2026-08-20T04:03:30.628697
 VOICE TRANSCRIPTION: "Goodnight Jarvis, I am going to bed now"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "Goodnight. Lights off and door locked. Sleep well.",
+  "spoken_response": "Goodnight, sir. All lights are powered down and the perimeter is secured.",
   "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "bedroom_light",
+      "action": "turn_off",
+      "value": null
+    },
     {
       "domain": "smart_home",
       "device_or_target": "living_room_light",
@@ -48,7 +54,969 @@ PARSED JSON PAYLOAD:
     },
     {
       "domain": "smart_home",
-      "device_or_target": "kitchen_light",
+      "device_or_target": "front_door_lock",
+      "action": "lock",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Goodnight Jarvis, I am going to bed now",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": null,
+  "eval_count": null,
+  "eval_duration_ms": null
+}
+STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Living Room Light: ON (100%) -> OFF; Front Door Lock: LOCKED -> LOCKED
+EXECUTION LATENCY: 4316.32 ms (4.32 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:03:35.384575
+VOICE TRANSCRIPTION: "Movie night mode"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Goodnight, and I'll play some music for you.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "entertainment_unit",
+      "action": "turn_on",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Movie night mode",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 91,
+  "eval_duration_ms": 828.522
+}
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); PC Action: turn_on -> entertainment_unit
+EXECUTION LATENCY: 4755.00 ms (4.76 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:03:40.039587
+VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening YouTube and searching for classical music.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "classical music"
+    }
+  ],
+  "raw_prompt": "Open YouTube and search for classical music",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 660,
+  "eval_count": 63,
+  "eval_duration_ms": 574.362
+}
+STATE TRANSITIONS: PC Action: open_website -> youtube (classical music)
+EXECUTION LATENCY: 4653.34 ms (4.65 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:03:44.894544
+VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "JARVIS is opening Notepad and turning on the living room light.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "open_app",
+      "action": "open_app",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Open Notepad and turn on the living room light",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 663,
+  "eval_count": 105,
+  "eval_duration_ms": 985.781
+}
+STATE TRANSITIONS: Living Room Light: ON (100%) -> ON (100%); PC Action: open_app -> open_app
+EXECUTION LATENCY: 4853.00 ms (4.85 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:03:50.058354
+VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Goodnight! I'm locking up for you. You'll be safe.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "bedroom_light",
+      "action": "turn_off",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_off",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "front_door_lock",
+      "action": "lock",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "lock_pc",
+      "action": "lock",
+      "value": null
+    }
+  ],
+  "raw_prompt": "I am heading out, lock my PC and lock the front door",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 666,
+  "eval_count": 152,
+  "eval_duration_ms": 1300.997
+}
+STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Living Room Light: ON (100%) -> OFF; Front Door Lock: LOCKED -> LOCKED; Front Door Lock: LOCKED -> LOCKED
+EXECUTION LATENCY: 5163.05 ms (5.16 s)
+======================================================================
+Imported existing <module 'comtypes.gen' from 'C:\\Users\\JOHN MIKO SARSALIJO\\Downloads\\project-jarvis-v2\\.venv\\Lib\\site-packages\\comtypes\\gen\\__init__.py'>
+Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.816 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:05:32.377069
+VOICE TRANSCRIPTION: "ai virtual assistant voice commands"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "I have processed your statement: 'ai virtual assistant voice commands', sir.",
+  "actions": [],
+  "raw_prompt": "ai virtual assistant voice commands",
+  "interpreted_intent": "conversational_dialogue",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": null,
+  "eval_count": null,
+  "eval_duration_ms": null
+}
+STATE TRANSITIONS: None
+EXECUTION LATENCY: 33618.69 ms (33.62 s)
+======================================================================
+Processing audio with duration 00:01.472
+VAD filter removed 00:00.656 of audio
+Processing audio with duration 00:00.960
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.472
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:03.392
+VAD filter removed 00:00.080 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.464 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:06:21.511262
+VOICE TRANSCRIPTION: "open my youtube"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening YouTube and searching for 'movie mode'.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "movie mode"
+    }
+  ],
+  "raw_prompt": "open my youtube",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 64,
+  "eval_duration_ms": 518.793
+}
+STATE TRANSITIONS: PC Action: Opened YouTube (movie mode)
+EXECUTION LATENCY: 5254.24 ms (5.25 s)
+======================================================================
+Processing audio with duration 00:01.312
+VAD filter removed 00:00.496 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.392 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.912 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.552 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.424 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:03.584
+VAD filter removed 00:01.680 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:08:04.348106
+VOICE TRANSCRIPTION: "open my facebook"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening Facebook for you.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "front_door_lock",
+      "action": "unlock",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "entertainment_unit",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "chrome",
+      "action": "open_website",
+      "value": "facebook"
+    }
+  ],
+  "raw_prompt": "open my facebook",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 131,
+  "eval_duration_ms": 1226.07
+}
+STATE TRANSITIONS: Front Door Lock: LOCKED -> UNLOCKED; Entertainment Unit: OFF -> ACTIVE; PC Action: Opened website 'https://www.chrome.com'
+EXECUTION LATENCY: 5721.86 ms (5.72 s)
+======================================================================
+Processing audio with duration 00:02.368
+VAD filter removed 00:01.536 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.616 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.664 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.160
+VAD filter removed 00:04.160 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:01.536
+VAD filter removed 00:01.536 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.424 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.648 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.464 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:01.984
+VAD filter removed 00:00.496 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:14:21.759647
+VOICE TRANSCRIPTION: "hi jarvis, hi jarvis, hi jarvis, hi jarvis"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Hello! How can I assist you today?",
+  "actions": [],
+  "raw_prompt": "hi jarvis, hi jarvis, hi jarvis, hi jarvis",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 668,
+  "eval_count": 23,
+  "eval_duration_ms": 199.227
+}
+STATE TRANSITIONS: None
+EXECUTION LATENCY: 12402.95 ms (12.40 s)
+======================================================================
+Processing audio with duration 00:01.728
+VAD filter removed 00:00.720 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.824 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:03.296
+VAD filter removed 00:00.976 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:03.520
+VAD filter removed 00:03.520 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.128
+VAD filter removed 00:03.184 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:02.848
+VAD filter removed 00:02.000 of audio
+Processing audio with duration 00:01.120
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:03.008
+VAD filter removed 00:03.008 of audio
+Processing audio with duration 00:00.672
+VAD filter removed 00:00.672 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:00.640
+VAD filter removed 00:00.640 of audio
+Processing audio with duration 00:00.928
+VAD filter removed 00:00.928 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.160
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.584 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.256
+VAD filter removed 00:02.992 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.072 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.296 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.664 of audio
+Processing audio with duration 00:01.632
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:02.592
+VAD filter removed 00:00.176 of audio
+Processing audio with duration 00:01.216
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:20:10.924806
+VOICE TRANSCRIPTION: "open my youtube"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Sure, I can help you with that. Just a moment, please.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "search query"
+    }
+  ],
+  "raw_prompt": "open my youtube",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 106,
+  "eval_duration_ms": 838.397
+}
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); PC Action: Opened YouTube (search query)
+EXECUTION LATENCY: 11346.18 ms (11.35 s)
+======================================================================
+Processing audio with duration 00:02.912
+VAD filter removed 00:01.392 of audio
+Processing audio with duration 00:02.880
+VAD filter removed 00:01.968 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:20:29.789980
+VOICE TRANSCRIPTION: "goodnight jarvis, goodnight jarvis, goodnight"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Goodnight, sir. All lights are powered down and the perimeter is secured.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "bedroom_light",
+      "action": "turn_off",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_off",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "front_door_lock",
+      "action": "lock",
+      "value": null
+    }
+  ],
+  "raw_prompt": "goodnight jarvis, goodnight jarvis, goodnight",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": null,
+  "eval_count": null,
+  "eval_duration_ms": null
+}
+STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Living Room Light: ON (100%) -> OFF; Front Door Lock: UNLOCKED -> LOCKED
+EXECUTION LATENCY: 5052.64 ms (5.05 s)
+======================================================================
+Processing audio with duration 00:03.200
+VAD filter removed 00:01.456 of audio
+Processing audio with duration 00:02.976
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:03.856 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:02.304
+VAD filter removed 00:02.304 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:02.896 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:01.008 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Processing audio with duration 00:04.480
+VAD filter removed 00:04.480 of audio
+Imported existing <module 'comtypes.gen' from 'C:\\Users\\JOHN MIKO SARSALIJO\\Downloads\\project-jarvis-v2\\.venv\\Lib\\site-packages\\comtypes\\gen\\__init__.py'>
+Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-small/revision/main "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-small/tree/536b0662742c02347bc0e980a01041f333bce120?recursive=true&expand=false "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/config.json "HTTP/1.1 307 Temporary Redirect"
+HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/config.json "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/config.json "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/vocabulary.txt "HTTP/1.1 307 Temporary Redirect"
+HTTP Request: HEAD https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/tokenizer.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/tokenizer.json "HTTP/1.1 200 OK"
+HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/vocabulary.txt "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/tokenizer.json "HTTP/1.1 200 OK"
+HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Systran/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120/vocabulary.txt "HTTP/1.1 200 OK"
+Processing audio with duration 00:00.800
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.800
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:38:34.133348
+VOICE TRANSCRIPTION: "play youtube."
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Sure, I'll play YouTube and search for 'movie night' for you.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "movie night"
+    }
+  ],
+  "raw_prompt": "play youtube.",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 101,
+  "eval_duration_ms": 780.576
+}
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); PC Action: Opened YouTube (movie night)
+EXECUTION LATENCY: 9859.90 ms (9.86 s)
+======================================================================
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.416 of audio
+Processing audio with duration 00:01.184
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.896
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.832
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:41:00.345045
+VOICE TRANSCRIPTION: "hey youtube."
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Hello, YouTube! How can I assist you today?",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "window_blinds",
+      "action": "open",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "bedroom_light",
+      "action": "turn_off",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "thermostat",
+      "action": "set_temperature",
+      "value": 24.0
+    }
+  ],
+  "raw_prompt": "hey youtube.",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 159,
+  "eval_duration_ms": 1315.589
+}
+STATE TRANSITIONS: Window Blinds: 100% -> 100%; Living Room Light: ON (100%) -> ON (100%); Bedroom Light: OFF -> OFF; Climate Thermostat: 22.0°C (AUTO) -> 24.0°C (HEAT)
+EXECUTION LATENCY: 5759.61 ms (5.76 s)
+======================================================================
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.416 of audio
+Processing audio with duration 00:00.768
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.312
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.120
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.376
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:41:52.147911
+VOICE TRANSCRIPTION: "open youtube."
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening YouTube and searching for 'how to fix a broken window', what do you want to watch?",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "how to fix a broken window"
+    }
+  ],
+  "raw_prompt": "open youtube.",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 78,
+  "eval_duration_ms": 679.756
+}
+STATE TRANSITIONS: PC Action: Opened YouTube (how to fix a broken window)
+EXECUTION LATENCY: 4930.62 ms (4.93 s)
+======================================================================
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.416 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.416 of audio
+Processing audio with duration 00:00.960
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.088
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:48:04.755911
+VOICE TRANSCRIPTION: "then you open my facebook."
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Hello! How can I assist you today?",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "front_door_lock",
+      "action": "lock",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "entertainment_unit",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "facebook",
+      "action": "open_app",
+      "value": null
+    }
+  ],
+  "raw_prompt": "then you open my facebook.",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 659,
+  "eval_count": 171,
+  "eval_duration_ms": 1339.84
+}
+STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; Living Room Light: ON (100%) -> ON (100%); Entertainment Unit: OFF -> ACTIVE; PC Action: Launched 'Facebook'.
+EXECUTION LATENCY: 10595.27 ms (10.60 s)
+======================================================================
+Processing audio with duration 00:00.576
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.832
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.608
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:49:09.117030
+VOICE TRANSCRIPTION: "ben."
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Hello, how can I assist you today?",
+  "actions": [],
+  "raw_prompt": "ben.",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 655,
+  "eval_count": 23,
+  "eval_duration_ms": 294.936
+}
+STATE TRANSITIONS: None
+EXECUTION LATENCY: 5421.49 ms (5.42 s)
+======================================================================
+Processing audio with duration 00:00.512
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:01.152
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:49:48.917251
+VOICE TRANSCRIPTION: "open facebook"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "JARVIS is here to help you with your smart home and desktop automation.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "window_blinds",
+      "action": "open",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "chrome",
+      "action": "open_website",
+      "value": "https://www.facebook.com"
+    }
+  ],
+  "raw_prompt": "open facebook",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 655,
+  "eval_count": 146,
+  "eval_duration_ms": 1218.901
+}
+STATE TRANSITIONS: Window Blinds: 100% -> 100%; Living Room Light: ON (100%) -> ON (100%); PC Action: Opened website 'https://www.facebook.com'
+EXECUTION LATENCY: 5567.86 ms (5.57 s)
+======================================================================
+Processing audio with duration 00:00.640
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.416
+VAD filter removed 00:00.000 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:50:35.717066
+VOICE TRANSCRIPTION: "open my facebook"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening your Facebook.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "window_blinds",
+      "action": "open",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "chrome",
+      "action": "open_website",
+      "value": "facebook"
+    }
+  ],
+  "raw_prompt": "open my facebook",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 656,
+  "eval_count": 87,
+  "eval_duration_ms": 776.882
+}
+STATE TRANSITIONS: Window Blinds: 100% -> 100%; PC Action: Opened website 'https://www.chrome.com'
+EXECUTION LATENCY: 5449.03 ms (5.45 s)
+======================================================================
+Processing audio with duration 00:00.576
+VAD filter removed 00:00.000 of audio
+Processing audio with duration 00:00.544
+VAD filter removed 00:00.544 of audio
+
+======================================================================
+TIMESTAMP: 2026-08-20T04:51:44.763126
+VOICE TRANSCRIPTION: "who is albert einstein?"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Albert Einstein was a German-born physicist who is best known for developing the theory of relativity, a framework for understanding the universe that revolutionized our understanding of space and time. His theory of relativity is a fundamental concept in physics that explains how the laws of physics are the same in all inertial frames of reference, and it has been confirmed by numerous experiments. He is also known for his work on quantum mechanics and for his contributions to the development of the atomic bomb.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
       "action": "turn_off",
       "value": null
     },
@@ -65,366 +1033,19 @@ PARSED JSON PAYLOAD:
       "value": null
     }
   ],
-  "raw_prompt": "Goodnight Jarvis, I am going to bed now",
+  "raw_prompt": "who is albert einstein?",
   "interpreted_intent": "agentic_action_plan",
   "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 520,
-  "eval_count": 326,
-  "eval_duration_ms": 4832.317
+  "prompt_eval_count": 660,
+  "eval_count": 203,
+  "eval_duration_ms": 1688.216
 }
-STATE TRANSITIONS: Living Room Light: ON (100%) -> OFF; Kitchen Light: OFF -> OFF; Bedroom Light: OFF -> OFF; Front Door Lock: LOCKED -> LOCKED
-EXECUTION LATENCY: 9207.26 ms (9.21 s)
+STATE TRANSITIONS: Living Room Light: ON (100%) -> OFF; Bedroom Light: OFF -> OFF; Front Door Lock: LOCKED -> LOCKED
+EXECUTION LATENCY: 6585.65 ms (6.59 s)
 ======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-19T15:59:20.342895
-VOICE TRANSCRIPTION: "Movie night mode"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Movie night mode activated: entertainment unit illuminated and living room lighting turned on for your cinematic experience.",
-  "actions": [
-    {
-      "domain": "smart_home",
-      "device_or_target": "entertainment_unit",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "living_room_light",
-      "action": "turn_on",
-      "value": null
-    }
-  ],
-  "raw_prompt": "Movie night mode",
-  "interpreted_intent": "agentic_action_plan",
-  "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 513,
-  "eval_count": 164,
-  "eval_duration_ms": 2394.616
-}
-STATE TRANSITIONS: Entertainment Unit: OFF -> ACTIVE; Living Room Light: OFF -> ON (100%)
-EXECUTION LATENCY: 6840.41 ms (6.84 s)
-======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-19T15:59:26.512694
-VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Opening YouTube and searching for classical music.",
-  "actions": [
-    {
-      "domain": "pc_automation",
-      "device_or_target": "youtube",
-      "action": "open_website",
-      "value": "classical music"
-    }
-  ],
-  "raw_prompt": "Open YouTube and search for classical music",
-  "interpreted_intent": "agentic_action_plan",
-  "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 517,
-  "eval_count": 124,
-  "eval_duration_ms": 1895.796
-}
-STATE TRANSITIONS: PC Action: open_website -> youtube (classical music)
-EXECUTION LATENCY: 6168.63 ms (6.17 s)
-======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-19T15:59:33.337014
-VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Opening Notepad and turning on living room light.",
-  "actions": [
-    {
-      "domain": "pc_automation",
-      "device_or_target": "notepad",
-      "action": "open_app",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "living_room_light",
-      "action": "turn_on",
-      "value": null
-    }
-  ],
-  "raw_prompt": "Open Notepad and turn on the living room light",
-  "interpreted_intent": "agentic_action_plan",
-  "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 520,
-  "eval_count": 166,
-  "eval_duration_ms": 2451.234
-}
-STATE TRANSITIONS: PC Action: open_app -> notepad; Living Room Light: ON (100%) -> ON (100%)
-EXECUTION LATENCY: 6823.29 ms (6.82 s)
-======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-19T15:59:39.832945
-VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Securing your home and workstation. Locking front door and PC.",
-  "actions": [
-    {
-      "domain": "smart_home",
-      "device_or_target": "front_door_lock",
-      "action": "lock",
-      "value": null
-    },
-    {
-      "domain": "pc_automation",
-      "device_or_target": "system_control",
-      "action": "lock_pc",
-      "value": null
-    }
-  ],
-  "raw_prompt": "I am heading out, lock my PC and lock the front door",
-  "interpreted_intent": "agentic_action_plan",
-  "model_name": "jarvis-trained-model",
-  "prompt_eval_count": 523,
-  "eval_count": 155,
-  "eval_duration_ms": 2265.583
-}
-STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; PC Action: lock_pc -> system_control
-EXECUTION LATENCY: 6494.88 ms (6.49 s)
-======================================================================
-Could not import comtypes.gen, trying to create it.
-Created comtypes.gen directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
-Writing __init__.py file: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen\__init__.py'
-Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
-Could not import comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4: No module named 'comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4'
-# Generating comtypes.gen._C866CA3A_32F7_11D2_9602_00C04F8EE628_0_5_4
-# Generating comtypes.gen.SpeechLib
-Could not import comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0: No module named 'comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0'
-# Generating comtypes.gen._00020430_0000_0000_C000_000000000046_0_2_0
-# Generating comtypes.gen.stdole
-HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:03.584 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:02.528
-VAD filter removed 00:02.528 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:01.168 of audio
-
-======================================================================
-TIMESTAMP: 2026-08-18T17:36:36.773645
-VOICE TRANSCRIPTION: "hi jarvis, hi jarvis, hi jarvis, hi jarvis"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "I have received your command: 'hi jarvis, hi jarvis, hi jarvis, hi jarvis', sir.",
-  "actions": [],
-  "raw_prompt": "hi jarvis, hi jarvis, hi jarvis, hi jarvis",
-  "interpreted_intent": "offline_fallback"
-}
-STATE TRANSITIONS: None
-EXECUTION LATENCY: 3566.44 ms (3.57 s)
-======================================================================
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:03.440 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:03.824 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:03.552 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:03.824 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:04.480 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:00.400 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:02.144 of audio
-Processing audio with duration 00:02.464
-VAD filter removed 00:00.528 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:02.032 of audio
-Processing audio with duration 00:02.432
-VAD filter removed 00:01.552 of audio
+Processing audio with duration 00:00.512
+VAD filter removed 00:00.016 of audio
+Processing audio with duration 00:01.024
+VAD filter removed 00:00.000 of audio
 Processing audio with duration 00:00.832
 VAD filter removed 00:00.000 of audio
-Processing audio with duration 00:04.480
-VAD filter removed 00:02.080 of audio
-Processing audio with duration 00:03.360
-VAD filter removed 00:00.672 of audio
-Processing audio with duration 00:01.696
-VAD filter removed 00:00.368 of audio
-Processing audio with duration 00:03.264
-VAD filter removed 00:00.896 of audio
-Processing audio with duration 00:01.600
-VAD filter removed 00:00.016 of audio
-Processing audio with duration 00:00.928
-VAD filter removed 00:00.000 of audio
-Processing audio with duration 00:02.944
-VAD filter removed 00:01.200 of audio

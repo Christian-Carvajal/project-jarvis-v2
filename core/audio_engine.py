@@ -25,7 +25,7 @@ class AudioEngine:
         self.is_speaking_tts = False
         self.is_listening_mic = False
         self.last_speech_time = 0.0
-        self.cooldown_duration = 0.15  # 150ms post-TTS safety cooldown
+        self.cooldown_duration = 0.08  # 80ms post-TTS safety cooldown (reduced for snappier re-listen)
 
         self.audio_level = 0.0  # Decibel audio level callback for UI visualizer
         self.audio_level_callback: Optional[Callable[[float], None]] = None
@@ -103,9 +103,6 @@ class AudioEngine:
         """Listens for user speech with multi-layer self-feedback isolation and VAD silence validation."""
         # 1. State Machine Guard: Refuse mic capture while JARVIS is speaking
         if self.is_speaking_tts or self.duplex_state in ["SPEAKING", "COOLDOWN"]:
-            return False, ""
-
-        if time.time() - self.last_speech_time < self.cooldown_duration:
             return False, ""
 
         self.is_listening_mic = True

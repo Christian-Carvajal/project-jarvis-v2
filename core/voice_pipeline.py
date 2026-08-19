@@ -62,11 +62,16 @@ class VoicePipeline:
     async def run_voice_cycle(self) -> bool:
         """Run a single 2-stage wake word & command execution cycle."""
         print("\n[SYSTEM]: Listening for wake word ('Jarvis' / 'Hey Jarvis')...")
-        wake_detected = await self.stt.detect_wake_word(timeout=4.0)
+        detected, inline_cmd = await self.stt.detect_wake_word_or_command(timeout=4.0)
 
-        if wake_detected:
+        if detected:
             print("[SYSTEM]: Wake word detected!")
             await self.acknowledge("At your service, sir.")
+
+            # If the user spoke wake word + command in one breath, execute immediately
+            if inline_cmd and len(inline_cmd.strip()) >= 3:
+                await self.process_user_input(inline_cmd.strip(), speak_audio=True)
+                return True
 
             print("[SYSTEM]: Listening for command...")
             command = await self.stt.listen_command(timeout=6.0, phrase_time_limit=10.0)
@@ -88,10 +93,10 @@ class VoicePipeline:
         while self.is_running:
             try:
                 await self.run_voice_cycle()
-                await asyncio.sleep(0.1)
+                # No unnecessary sleep — VAD auto-slicing handles pacing naturally
             except asyncio.CancelledError:
                 self.is_running = False
                 break
             except Exception as e:
                 print(f"\n[Pipeline Error: {e}]")
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(0.5)

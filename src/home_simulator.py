@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import json
+import math
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -415,33 +416,35 @@ class SmartHomeStateMachine:
 
 
 # =============================================================================
-# 3. MODERN TOP-TIER TKINTER GUI DASHBOARD
+# 3. MODERN TOP-TIER TKINTER GUI DASHBOARD (STARK CYBERPUNK WORKSTATION)
 # =============================================================================
 
 class ModernHomeDashboard(tk.Tk):
     """
     Stark Industries Cyberpunk Dark-Themed GUI Dashboard.
-    Equipped with:
-    - 🎙️ Live Microphone Toggle (Online / Muted)
-    - 🛑 Emergency HALT / Override Button
-    - Model Selection Dropdown (qwen3.5:2b, etc.)
-    - Real-Time Hardware Telemetry (CPU %, RAM, Latency)
-    - Interactive Clickable Device Cards
-    - Instant Zero-Lag Command Dispatcher
+    Features:
+    - ⚡ Top Navigation & Telemetry Bar: Brand, Status badge, Model Selector, Latency, CPU/RAM, Mic toggle, HALT override, Clear Chat
+    - 🎛️ Left Sidebar Hub: Quick Scenario Presets (Movie Night, Goodnight, Leaving, Comfort, Spotify, YouTube, Lock PC) & Grouped Device Controls
+    - 💬 Center/Right Viewport: Pulsing Arc Reactor Visualizer & Much Bigger, Highly Readable Chat / Execution Log
+    - ⌨️ Bottom Command Bar: Full-width input with Execute and Voice triggers
     """
 
     THEME = {
-        "bg_dark": "#070D18",
-        "card_bg": "#0D1B2E",
-        "card_border": "#1B3A60",
-        "card_active": "#102C4E",
+        "bg_dark": "#050B14",
+        "header_bg": "#091424",
+        "sidebar_bg": "#081220",
+        "card_bg": "#0C1B2F",
+        "card_border": "#163458",
+        "card_active": "#10325A",
         "accent_cyan": "#00F0FF",
         "accent_green": "#00FF88",
         "accent_amber": "#FFB300",
         "accent_red": "#FF3366",
+        "accent_purple": "#BD00FF",
         "text_primary": "#FFFFFF",
-        "text_secondary": "#7A92AD",
-        "entry_bg": "#0B1626"
+        "text_secondary": "#7D98B6",
+        "entry_bg": "#071222",
+        "console_bg": "#040912"
     }
 
     def __init__(
@@ -450,7 +453,8 @@ class ModernHomeDashboard(tk.Tk):
         on_command_submit: Optional[Callable[[str], str]] = None,
         on_halt_clicked: Optional[Callable[[], None]] = None,
         on_mic_toggle: Optional[Callable[[], bool]] = None,
-        on_model_change: Optional[Callable[[str], None]] = None
+        on_model_change: Optional[Callable[[str], None]] = None,
+        on_voice_trigger: Optional[Callable[[], None]] = None
     ):
         super().__init__()
         self.state_machine = state_machine
@@ -458,98 +462,130 @@ class ModernHomeDashboard(tk.Tk):
         self.on_halt_clicked = on_halt_clicked
         self.on_mic_toggle = on_mic_toggle
         self.on_model_change = on_model_change
+        self.on_voice_trigger = on_voice_trigger
 
-        self.title("⚡ STARK INDUSTRIES — JARVIS AI WORKSTATION (APEX SMART HOME)")
-        self.geometry("1180x780")
-        self.minsize(980, 680)
+        self.title("⚡ STARK INDUSTRIES — PROJECT JARVIS v2.0 (APEX SMART HOME & PC SUITE)")
+        self.geometry("1300x840")
+        self.minsize(1050, 720)
         self.configure(bg=self.THEME["bg_dark"])
 
         self.device_widgets = {}
         self.is_mic_muted = False
+        self._reactor_angle = 0
+        self._current_status_state = "STANDBY"
+        self._pulse_val = 0.0
+        self._pulse_dir = 1
 
         self._build_ui()
         self.refresh_dashboard()
 
-        # Telemetry Polling Timer (CPU/RAM)
+        # Start Telemetry Loop & Robot AI Avatar Animation
         self._start_telemetry_loop()
+        self._animate_robot_avatar()
 
     def _build_ui(self):
-        # ---------------- TOP HEADER / TELEMETRY BAR ----------------
-        header_frame = tk.Frame(self, bg=self.THEME["bg_dark"], padx=18, pady=12)
-        header_frame.pack(fill=tk.X)
+        # ---------------- 1. TOP HEADER & TELEMETRY BAR ----------------
+        top_bar = tk.Frame(self, bg=self.THEME["header_bg"], padx=16, pady=10, relief=tk.FLAT, bd=0)
+        top_bar.pack(fill=tk.X, side=tk.TOP)
+
+        # Brand / Title
+        brand_frame = tk.Frame(top_bar, bg=self.THEME["header_bg"])
+        brand_frame.pack(side=tk.LEFT)
 
         title_lbl = tk.Label(
-            header_frame,
-            text="⚡ APEX SMART HOME & PC WORKSTATION",
-            font=("Helvetica", 14, "bold"),
+            brand_frame,
+            text="⚡ STARK INDUSTRIES",
+            font=("Segoe UI", 13, "bold"),
             fg=self.THEME["accent_cyan"],
-            bg=self.THEME["bg_dark"]
+            bg=self.THEME["header_bg"]
         )
         title_lbl.pack(side=tk.LEFT)
 
         sub_lbl = tk.Label(
-            header_frame,
-            text="| 100% OFFLINE AI HUB",
-            font=("Helvetica", 9, "bold"),
+            brand_frame,
+            text="JARVIS WORKSTATION v2.0",
+            font=("Segoe UI", 9, "bold"),
             fg=self.THEME["text_secondary"],
-            bg=self.THEME["bg_dark"]
+            bg=self.THEME["header_bg"]
         )
-        sub_lbl.pack(side=tk.LEFT, padx=(6, 12))
+        sub_lbl.pack(side=tk.LEFT, padx=(6, 14))
 
         # Model Selector
-        mod_lbl = tk.Label(header_frame, text="MODEL:", font=("Helvetica", 9, "bold"), fg=self.THEME["accent_cyan"], bg=self.THEME["bg_dark"])
-        mod_lbl.pack(side=tk.LEFT, padx=(10, 4))
+        mod_lbl = tk.Label(
+            top_bar,
+            text="AI ENGINE:",
+            font=("Consolas", 9, "bold"),
+            fg=self.THEME["accent_cyan"],
+            bg=self.THEME["header_bg"]
+        )
+        mod_lbl.pack(side=tk.LEFT, padx=(4, 4))
 
         self.model_combo = ttk.Combobox(
-            header_frame,
-            values=["jarvis-trained-model"],
+            top_bar,
+            values=["jarvis-trained-model", "qwen2.5:1.5b"],
             state="readonly",
             width=20,
-            font=("Helvetica", 9)
+            font=("Consolas", 9)
         )
         self.model_combo.set("jarvis-trained-model")
         self.model_combo.bind("<<ComboboxSelected>>", self._handle_model_selected)
-        self.model_combo.pack(side=tk.LEFT, padx=(0, 10))
+        self.model_combo.pack(side=tk.LEFT, padx=(0, 14))
 
-        # HALT Emergency Override Button
+        # Action Buttons on Right
         self.halt_btn = tk.Button(
-            header_frame,
+            top_bar,
             text="🛑 HALT / OVERRIDE",
-            font=("Helvetica", 9, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=self.THEME["accent_red"],
-            bg="#2A0B14",
+            bg="#2B0A14",
             activebackground=self.THEME["accent_red"],
             activeforeground="#FFFFFF",
             relief=tk.FLAT,
             bd=1,
-            padx=10,
-            pady=3,
+            padx=12,
+            pady=4,
             cursor="hand2",
             command=self._handle_halt_click
         )
         self.halt_btn.pack(side=tk.RIGHT, padx=4)
 
-        # Mic Toggle Button
         self.mic_btn = tk.Button(
-            header_frame,
+            top_bar,
             text="🎙️ MIC: ONLINE",
-            font=("Helvetica", 9, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=self.THEME["accent_green"],
-            bg="#0B2A18",
+            bg="#082516",
             activebackground=self.THEME["accent_green"],
             activeforeground="#000000",
             relief=tk.FLAT,
             bd=1,
             padx=10,
-            pady=3,
+            pady=4,
             cursor="hand2",
             command=self._handle_mic_toggle_click
         )
         self.mic_btn.pack(side=tk.RIGHT, padx=4)
 
+        self.clear_btn = tk.Button(
+            top_bar,
+            text="🧹 CLEAR",
+            font=("Segoe UI", 9, "bold"),
+            fg=self.THEME["text_secondary"],
+            bg="#0B1A2E",
+            activebackground=self.THEME["card_active"],
+            activeforeground="#FFFFFF",
+            relief=tk.FLAT,
+            bd=1,
+            padx=10,
+            pady=4,
+            cursor="hand2",
+            command=self._clear_console
+        )
+        self.clear_btn.pack(side=tk.RIGHT, padx=4)
+
         # Telemetry CPU/RAM Badge
         self.telemetry_label = tk.Label(
-            header_frame,
+            top_bar,
             text="CPU: 0% | RAM: 0 MB",
             font=("Consolas", 9, "bold"),
             fg=self.THEME["accent_cyan"],
@@ -559,59 +595,45 @@ class ModernHomeDashboard(tk.Tk):
         )
         self.telemetry_label.pack(side=tk.RIGHT, padx=6)
 
-        # Assistant Status Badge
-        self.status_badge = tk.Label(
-            header_frame,
-            text="● STANDBY (Say 'Hey Jarvis')",
-            font=("Helvetica", 10, "bold"),
-            fg=self.THEME["accent_cyan"],
-            bg=self.THEME["card_bg"],
-            padx=10,
-            pady=4
-        )
-        self.status_badge.pack(side=tk.RIGHT, padx=6)
-
         # Latency Display
         self.latency_label = tk.Label(
-            header_frame,
+            top_bar,
             text="⏱️ LATENCY: 0 ms",
-            font=("Helvetica", 9, "bold"),
+            font=("Consolas", 9, "bold"),
             fg=self.THEME["accent_amber"],
-            bg=self.THEME["bg_dark"],
+            bg=self.THEME["header_bg"],
             padx=6
         )
         self.latency_label.pack(side=tk.RIGHT, padx=4)
 
-        # Separator line
+        # Assistant Status Badge
+        self.status_badge = tk.Label(
+            top_bar,
+            text="● STANDBY (Say 'Hey Jarvis')",
+            font=("Segoe UI", 10, "bold"),
+            fg=self.THEME["accent_cyan"],
+            bg=self.THEME["card_bg"],
+            padx=12,
+            pady=4
+        )
+        self.status_badge.pack(side=tk.RIGHT, padx=6)
+
+        # Separator line under header
         sep = tk.Frame(self, bg=self.THEME["card_border"], height=1)
-        sep.pack(fill=tk.X, padx=14, pady=(0, 10))
+        sep.pack(fill=tk.X, side=tk.TOP)
 
-        # ---------------- MAIN CONTENT SPLIT (CARDS & TELEMETRY) ----------------
-        main_content = tk.Frame(self, bg=self.THEME["bg_dark"], padx=14, pady=4)
-        main_content.pack(fill=tk.BOTH, expand=True)
-
-        left_grid = tk.Frame(main_content, bg=self.THEME["bg_dark"])
-        left_grid.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
-
-        right_panel = tk.Frame(main_content, bg=self.THEME["card_bg"], padx=14, pady=12)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, ipadx=10)
-        right_panel.config(width=420)
-
-        self._build_device_grid(left_grid)
-        self._build_right_panel(right_panel)
-
-        # ---------------- BOTTOM COMMAND BAR ----------------
+        # ---------------- 2. BOTTOM COMMAND BAR ----------------
         bottom_frame = tk.Frame(self, bg=self.THEME["entry_bg"], padx=14, pady=10)
-        bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=14, pady=(6, 12))
+        bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=12, pady=(4, 10))
 
         cmd_label = tk.Label(
             bottom_frame,
-            text="Voice / Text Command:",
-            font=("Helvetica", 10, "bold"),
+            text="⚡ COMMAND:",
+            font=("Segoe UI", 10, "bold"),
             fg=self.THEME["accent_cyan"],
             bg=self.THEME["entry_bg"]
         )
-        cmd_label.pack(side=tk.LEFT, padx=(0, 10))
+        cmd_label.pack(side=tk.LEFT, padx=(4, 10))
 
         self.cmd_entry = tk.Entry(
             bottom_frame,
@@ -620,60 +642,171 @@ class ModernHomeDashboard(tk.Tk):
             fg=self.THEME["text_primary"],
             insertbackground=self.THEME["accent_cyan"],
             relief=tk.FLAT,
-            bd=5
+            bd=6
         )
         self.cmd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         self.cmd_entry.bind("<Return>", lambda e: self._submit_typed_command())
 
         self.exec_btn = tk.Button(
             bottom_frame,
-            text="EXECUTE COMMAND",
-            font=("Helvetica", 9, "bold"),
+            text="🚀 EXECUTE",
+            font=("Segoe UI", 9, "bold"),
             bg=self.THEME["accent_cyan"],
             fg="#000000",
             activebackground=self.THEME["accent_green"],
             activeforeground="#000000",
             relief=tk.FLAT,
-            padx=14,
-            pady=4,
+            padx=16,
+            pady=5,
             cursor="hand2",
             command=self._submit_typed_command
         )
-        self.exec_btn.pack(side=tk.RIGHT)
+        self.exec_btn.pack(side=tk.RIGHT, padx=(0, 4))
 
-    def _build_device_grid(self, parent):
-        cards_info = [
-            ("living_room_light", "💡 Living Room Light", "living_room"),
-            ("kitchen_light", "💡 Kitchen Light", "kitchen"),
-            ("bedroom_light", "💡 Bedroom Light", "bedroom"),
-            ("thermostat", "🌡️ Climate Thermostat", "living_room"),
-            ("front_door_lock", "🔒 Front Door Lock", "front_door"),
-            ("entertainment_unit", "📺 Entertainment Unit", "living_room"),
-            ("security_alarm", "🛡️ Security Alarm", "house"),
-            ("ceiling_fan", "🌀 Ceiling Fan", "living_room"),
-            ("window_blinds", "🪟 Window Blinds", "living_room")
+        self.voice_trigger_btn = tk.Button(
+            bottom_frame,
+            text="🎙️ SPEAK NOW",
+            font=("Segoe UI", 9, "bold"),
+            bg="#082A1A",
+            fg=self.THEME["accent_green"],
+            activebackground=self.THEME["accent_green"],
+            activeforeground="#000000",
+            relief=tk.FLAT,
+            padx=12,
+            pady=5,
+            cursor="hand2",
+            command=lambda: self._submit_preset_voice_prompt()
+        )
+        self.voice_trigger_btn.pack(side=tk.RIGHT, padx=6)
+
+        # ---------------- 3. MAIN WORKSPACE SPLIT (LEFT SIDEBAR & CENTER CHAT) ----------------
+        main_workspace = tk.Frame(self, bg=self.THEME["bg_dark"], padx=10, pady=6)
+        main_workspace.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
+
+        # Left Sidebar (Features, Presets & Device Hub)
+        sidebar = tk.Frame(main_workspace, bg=self.THEME["sidebar_bg"], padx=12, pady=10, width=380)
+        sidebar.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 8))
+        sidebar.pack_propagate(False)
+
+        # Right / Center Main Viewport (Arc Reactor Visualizer + Bigger Chat Box)
+        center_panel = tk.Frame(main_workspace, bg=self.THEME["bg_dark"])
+        center_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self._build_sidebar(sidebar)
+        self._build_center_chat(center_panel)
+
+    def _build_sidebar(self, parent):
+        # Header for Presets
+        lbl_presets = tk.Label(
+            parent,
+            text="⚡ QUICK SCENARIOS & APPS",
+            font=("Segoe UI", 10, "bold"),
+            fg=self.THEME["accent_cyan"],
+            bg=self.THEME["sidebar_bg"]
+        )
+        lbl_presets.pack(anchor="w", pady=(2, 6))
+
+        # Presets 2x4 Grid
+        presets_frame = tk.Frame(parent, bg=self.THEME["sidebar_bg"])
+        presets_frame.pack(fill=tk.X, pady=(0, 10))
+
+        preset_items = [
+            ("🎬 Movie Night", "movie night mode"),
+            ("🌙 Goodnight", "goodnight jarvis"),
+            ("🚶 Leaving Home", "heading out lock my pc and lock the door"),
+            ("❄️ Comfort Mode", "it is freezing and dark in here"),
+            ("🎵 Open Spotify", "open spotify app"),
+            ("📺 Open YouTube", "open youtube and search for lofi beats"),
+            ("🔒 Lock Workstation", "lock my pc"),
+            ("🌐 Open Browser", "open chrome")
         ]
 
-        row, col = 0, 0
-        for dev_id, title, room in cards_info:
-            card = tk.Frame(parent, bg=self.THEME["card_bg"], padx=14, pady=10, relief=tk.FLAT, cursor="hand2")
-            card.grid(row=row, column=col, sticky="nsew", padx=6, pady=6)
-            parent.grid_columnconfigure(col, weight=1)
-            parent.grid_rowconfigure(row, weight=1)
+        p_row, p_col = 0, 0
+        for label, cmd in preset_items:
+            btn = tk.Button(
+                presets_frame,
+                text=label,
+                font=("Segoe UI", 8, "bold"),
+                bg=self.THEME["card_bg"],
+                fg=self.THEME["text_primary"],
+                activebackground=self.THEME["card_active"],
+                activeforeground=self.THEME["accent_cyan"],
+                relief=tk.FLAT,
+                bd=1,
+                padx=6,
+                pady=4,
+                cursor="hand2",
+                command=lambda c=cmd: self._trigger_preset(c)
+            )
+            btn.grid(row=p_row, column=p_col, sticky="ew", padx=3, pady=3)
+            presets_frame.grid_columnconfigure(p_col, weight=1)
+            p_col += 1
+            if p_col > 1:
+                p_col = 0
+                p_row += 1
 
-            # Click card to toggle device manually
+        # Header for Devices
+        lbl_devices = tk.Label(
+            parent,
+            text="🎛️ SMART HOME & SYSTEM HUB",
+            font=("Segoe UI", 10, "bold"),
+            fg=self.THEME["accent_cyan"],
+            bg=self.THEME["sidebar_bg"]
+        )
+        lbl_devices.pack(anchor="w", pady=(8, 6))
+
+        # Scrollable container for Device Cards
+        devices_container = tk.Frame(parent, bg=self.THEME["sidebar_bg"])
+        devices_container.pack(fill=tk.BOTH, expand=True)
+
+        devices_canvas = tk.Canvas(devices_container, bg=self.THEME["sidebar_bg"], highlightthickness=0)
+        devices_scrollbar = ttk.Scrollbar(devices_container, orient="vertical", command=devices_canvas.yview)
+        scrollable_device_frame = tk.Frame(devices_canvas, bg=self.THEME["sidebar_bg"])
+
+        scrollable_device_frame.bind(
+            "<Configure>",
+            lambda e: devices_canvas.configure(scrollregion=devices_canvas.bbox("all"))
+        )
+        devices_canvas.create_window((0, 0), window=scrollable_device_frame, anchor="nw", width=345)
+        devices_canvas.configure(yscrollcommand=devices_scrollbar.set)
+
+        devices_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        devices_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self._populate_device_cards(scrollable_device_frame)
+
+    def _populate_device_cards(self, parent):
+        cards_info = [
+            ("living_room_light", "💡 Living Room Light", "smart_home"),
+            ("kitchen_light", "💡 Kitchen Light", "smart_home"),
+            ("bedroom_light", "💡 Bedroom Light", "smart_home"),
+            ("thermostat", "🌡️ Climate Thermostat", "smart_home"),
+            ("front_door_lock", "🔒 Front Door Lock", "smart_home"),
+            ("entertainment_unit", "📺 Entertainment Unit", "smart_home"),
+            ("security_alarm", "🛡️ Security Alarm", "smart_home"),
+            ("ceiling_fan", "🌀 Ceiling Fan", "smart_home"),
+            ("window_blinds", "🪟 Window Blinds", "smart_home")
+        ]
+
+        for dev_id, title, domain in cards_info:
+            card = tk.Frame(parent, bg=self.THEME["card_bg"], padx=10, pady=8, relief=tk.FLAT, bd=1, cursor="hand2")
+            card.pack(fill=tk.X, pady=4)
             card.bind("<Button-1>", lambda e, d=dev_id: self._toggle_device_click(d))
 
-            title_lbl = tk.Label(card, text=title, font=("Helvetica", 11, "bold"), fg=self.THEME["text_primary"], bg=self.THEME["card_bg"])
-            title_lbl.pack(anchor="w")
+            top_row = tk.Frame(card, bg=self.THEME["card_bg"])
+            top_row.pack(fill=tk.X)
+            top_row.bind("<Button-1>", lambda e, d=dev_id: self._toggle_device_click(d))
+
+            title_lbl = tk.Label(top_row, text=title, font=("Segoe UI", 9, "bold"), fg=self.THEME["text_primary"], bg=self.THEME["card_bg"])
+            title_lbl.pack(side=tk.LEFT)
             title_lbl.bind("<Button-1>", lambda e, d=dev_id: self._toggle_device_click(d))
 
-            status_lbl = tk.Label(card, text="OFF", font=("Helvetica", 13, "bold"), fg=self.THEME["text_secondary"], bg=self.THEME["card_bg"])
-            status_lbl.pack(anchor="w", pady=(4, 2))
+            status_lbl = tk.Label(top_row, text="OFF", font=("Consolas", 10, "bold"), fg=self.THEME["text_secondary"], bg=self.THEME["card_bg"])
+            status_lbl.pack(side=tk.RIGHT)
             status_lbl.bind("<Button-1>", lambda e, d=dev_id: self._toggle_device_click(d))
 
-            detail_lbl = tk.Label(card, text="State: Standby", font=("Helvetica", 9), fg=self.THEME["text_secondary"], bg=self.THEME["card_bg"])
-            detail_lbl.pack(anchor="w")
+            detail_lbl = tk.Label(card, text="State: Standby", font=("Segoe UI", 8), fg=self.THEME["text_secondary"], bg=self.THEME["card_bg"])
+            detail_lbl.pack(anchor="w", pady=(2, 0))
             detail_lbl.bind("<Button-1>", lambda e, d=dev_id: self._toggle_device_click(d))
 
             self.device_widgets[dev_id] = {
@@ -682,71 +815,420 @@ class ModernHomeDashboard(tk.Tk):
                 "detail_lbl": detail_lbl
             }
 
-            col += 1
-            if col > 2:
-                col = 0
-                row += 1
+    def _build_center_chat(self, parent):
+        # 1. Animated Robotic AI Avatar Canvas (Speaking & Emotion Visualizer)
+        visualizer_frame = tk.Frame(parent, bg=self.THEME["bg_dark"], height=175)
+        visualizer_frame.pack(fill=tk.X, side=tk.TOP, pady=(0, 6))
+        visualizer_frame.pack_propagate(False)
 
-    def _build_right_panel(self, parent):
-        log_title = tk.Label(
-            parent,
-            text="📋 LIVE EXECUTION TELEMETRY",
-            font=("Helvetica", 11, "bold"),
+        self.reactor_canvas = tk.Canvas(
+            visualizer_frame,
+            bg=self.THEME["header_bg"],
+            height=170,
+            highlightthickness=1,
+            highlightbackground=self.THEME["card_border"]
+        )
+        self.reactor_canvas.pack(fill=tk.BOTH, expand=True)
+
+        # 2. Enlarged Chat / Telemetry Console Box (DOMINANT VIEWPORT)
+        chat_frame = tk.Frame(parent, bg=self.THEME["console_bg"], bd=1, relief=tk.FLAT)
+        chat_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
+
+        chat_header = tk.Frame(chat_frame, bg=self.THEME["card_bg"], padx=10, pady=4)
+        chat_header.pack(fill=tk.X)
+
+        chat_title = tk.Label(
+            chat_header,
+            text="💬 LIVE CONVERSATION & AGENTIC ACTION DISPATCH",
+            font=("Segoe UI", 9, "bold"),
             fg=self.THEME["accent_cyan"],
             bg=self.THEME["card_bg"]
         )
-        log_title.pack(anchor="w", pady=(0, 6))
+        chat_title.pack(side=tk.LEFT)
 
-        self.log_text = tk.Text(
-            parent,
-            bg=self.THEME["bg_dark"],
-            fg=self.THEME["accent_green"],
-            font=("Consolas", 9),
-            relief=tk.FLAT,
-            bd=4,
-            wrap=tk.WORD,
-            height=26,
-            width=48
+        self.chat_count_lbl = tk.Label(
+            chat_header,
+            text="0 Interactions",
+            font=("Consolas", 8),
+            fg=self.THEME["text_secondary"],
+            bg=self.THEME["card_bg"]
         )
+        self.chat_count_lbl.pack(side=tk.RIGHT)
+
+        # Chat Text Box with Scrollbar
+        self.log_text = tk.Text(
+            chat_frame,
+            bg=self.THEME["console_bg"],
+            fg=self.THEME["text_primary"],
+            font=("Consolas", 10),
+            relief=tk.FLAT,
+            bd=8,
+            wrap=tk.WORD,
+            padx=10,
+            pady=10
+        )
+        chat_scroll = ttk.Scrollbar(chat_frame, orient="vertical", command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=chat_scroll.set)
+
+        chat_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
-        self.log_console("⚡ STARK JARVIS AI Hub Initialized.")
-        self.log_console("🧠 Ollama Qwen 3.5 (2B): ONLINE")
-        self.log_console("🔊 British Jarvis (Edge-TTS en-GB-RyanNeural): READY")
-        self.log_console("🎙️ Acoustic Gating: LISTENING FOR 'JARVIS'...")
+        # Configure custom colored tags
+        self.log_text.tag_config("tag_time", foreground="#5E7896", font=("Consolas", 9))
+        self.log_text.tag_config("tag_user", foreground="#00FF88", font=("Consolas", 10, "bold"))
+        self.log_text.tag_config("tag_jarvis", foreground="#00F0FF", font=("Consolas", 10, "bold"))
+        self.log_text.tag_config("tag_action", foreground="#BD00FF", font=("Consolas", 10))
+        self.log_text.tag_config("tag_perf", foreground="#FFB300", font=("Consolas", 9, "bold"))
+        self.log_text.tag_config("tag_system", foreground="#7D98B6", font=("Consolas", 9, "italic"))
+        self.log_text.tag_config("tag_alert", foreground="#FF3366", font=("Consolas", 10, "bold"))
+
+        self._msg_count = 0
+        self._robot_frame = 0
+        self._blink_counter = 0
+        self._is_blinking = False
+        self._speech_phase = 0.0
+
+        self.log_console("⚡ STARK JARVIS AI Hub Online. Robotic Avatar Visualizer Active.")
+        self.log_console("🧠 Ollama Engine (jarvis-trained-model / Qwen 2.5): READY")
+        self.log_console("🔊 British Jarvis Speech Output (Edge-TTS en-GB-RyanNeural): ONLINE")
+        self.log_console("🎙️ Hardware Acoustic Gate: LISTENING FOR 'HEY JARVIS'...")
+
+    def _animate_robot_avatar(self):
+        """
+        Draws high-tech, futuristic animated Robot AI Avatar on canvas.
+        Features:
+        - Animated cybernetic head, cheek armor, and ear acoustic nodes with bouncing equalizer bars.
+        - Expressive glowing optic eyes with natural blinking, scanning laser, and reasoning reticles.
+        - Articulating speaking mouth with realistic jaw opening & multi-bar vocal equalizer matrix!
+        - Dynamic state transitions (STANDBY, LISTENING, REASONING, SPEAKING, HALTED).
+        """
+        try:
+            self.reactor_canvas.delete("all")
+            w = self.reactor_canvas.winfo_width()
+            h = self.reactor_canvas.winfo_height()
+            if w < 50 or h < 50:
+                w, h = 850, 170
+
+            cx, cy = w // 2, (h // 2) - 4
+            self._robot_frame += 1
+
+            # State Color Palette
+            state_palettes = {
+                "STANDBY": {
+                    "primary": "#00F0FF",
+                    "secondary": "#0080FF",
+                    "plate_bg": "#09172B",
+                    "plate_border": "#163B66",
+                    "eye_glow": "#00F0FF",
+                    "mouth_glow": "#00F0FF",
+                    "label": "STANDBY // READY"
+                },
+                "LISTENING": {
+                    "primary": "#00FF88",
+                    "secondary": "#00AA55",
+                    "plate_bg": "#082218",
+                    "plate_border": "#145638",
+                    "eye_glow": "#00FF88",
+                    "mouth_glow": "#00FF88",
+                    "label": "LISTENING TO VOICE..."
+                },
+                "REASONING": {
+                    "primary": "#BD00FF",
+                    "secondary": "#8000AA",
+                    "plate_bg": "#1C0A28",
+                    "plate_border": "#4F196B",
+                    "eye_glow": "#BD00FF",
+                    "mouth_glow": "#BD00FF",
+                    "label": "REASONING // QWEN LLM"
+                },
+                "SPEAKING": {
+                    "primary": "#00F0FF",
+                    "secondary": "#00FF88",
+                    "plate_bg": "#0B2038",
+                    "plate_border": "#215890",
+                    "eye_glow": "#FFFFFF",
+                    "mouth_glow": "#00FF88",
+                    "label": "SPEAKING RESPONSE..."
+                },
+                "HALTED": {
+                    "primary": "#FF3366",
+                    "secondary": "#AA1133",
+                    "plate_bg": "#280A14",
+                    "plate_border": "#6B192A",
+                    "eye_glow": "#FF3366",
+                    "mouth_glow": "#FF3366",
+                    "label": "EMERGENCY HALTED"
+                }
+            }
+
+            p = state_palettes.get(self._current_status_state, state_palettes["STANDBY"])
+            primary_c = p["primary"]
+            secondary_c = p["secondary"]
+            plate_bg = p["plate_bg"]
+            plate_border = p["plate_border"]
+            eye_c = p["eye_glow"]
+            mouth_c = p["mouth_glow"]
+
+            # Subtle breathing vertical bob
+            breathe_y = math.sin(self._robot_frame * 0.08) * 1.5
+            cy += breathe_y
+
+            # ---------------- 1. BACKGROUND HUD GRID & AMBIENT WAVES ----------------
+            # Tech grid lines radiating from sides
+            self.reactor_canvas.create_line(30, cy - 25, cx - 110, cy - 25, fill="#102540", width=1)
+            self.reactor_canvas.create_line(cx + 110, cy - 25, w - 30, cy - 25, fill="#102540", width=1)
+            self.reactor_canvas.create_line(40, cy + 25, cx - 105, cy + 25, fill="#102540", width=1)
+            self.reactor_canvas.create_line(cx + 105, cy + 25, w - 40, cy + 25, fill="#102540", width=1)
+
+            # Circular holographic halo behind head
+            halo_r = int(72 + math.sin(self._robot_frame * 0.1) * 3)
+            self.reactor_canvas.create_oval(cx - halo_r, cy - halo_r + 4, cx + halo_r, cy + halo_r + 4, outline="#112B4C", width=1)
+            self.reactor_canvas.create_arc(cx - halo_r - 6, cy - halo_r - 2, cx + halo_r + 6, cy + halo_r + 10, start=(self._robot_frame * 2) % 360, extent=45, outline=secondary_c, width=1, style=tk.ARC)
+            self.reactor_canvas.create_arc(cx - halo_r - 6, cy - halo_r - 2, cx + halo_r + 6, cy + halo_r + 10, start=(self._robot_frame * 2 + 180) % 360, extent=45, outline=secondary_c, width=1, style=tk.ARC)
+
+            # ---------------- 2. ROBOTIC EAR ACOUSTIC NODES (LEFT & RIGHT) ----------------
+            # Left Ear Node
+            self.reactor_canvas.create_polygon(
+                [cx - 96, cy - 20, cx - 84, cy - 28, cx - 84, cy + 24, cx - 96, cy + 16],
+                fill=plate_bg, outline=primary_c, width=2
+            )
+            # Right Ear Node
+            self.reactor_canvas.create_polygon(
+                [cx + 84, cy - 28, cx + 96, cy - 20, cx + 96, cy + 16, cx + 84, cy + 24],
+                fill=plate_bg, outline=primary_c, width=2
+            )
+
+            # Ear Equalizer LEDs
+            for i in range(3):
+                eq_val = abs(math.sin(self._robot_frame * 0.22 + i * 1.1)) * (14 if self._current_status_state == "SPEAKING" else 7)
+                # Left ear LEDs
+                self.reactor_canvas.create_line(cx - 93 + i * 3, cy - eq_val / 2, cx - 93 + i * 3, cy + eq_val / 2, fill=primary_c, width=2)
+                # Right ear LEDs
+                self.reactor_canvas.create_line(cx + 87 + i * 3, cy - eq_val / 2, cx + 87 + i * 3, cy + eq_val / 2, fill=primary_c, width=2)
+
+            # ---------------- 3. ROBOTIC HEAD / CHASSIS SKULL ----------------
+            head_pts = [
+                cx - 50, cy - 54,  # top flat left
+                cx + 50, cy - 54,  # top flat right
+                cx + 78, cy - 30,  # upper temple right
+                cx + 82, cy + 6,   # cheek right
+                cx + 58, cy + 46,  # jaw right
+                cx + 26, cy + 58,  # chin right
+                cx - 26, cy + 58,  # chin left
+                cx - 58, cy + 46,  # jaw left
+                cx - 82, cy + 6,   # cheek left
+                cx - 78, cy - 30   # upper temple left
+            ]
+            self.reactor_canvas.create_polygon(head_pts, fill=plate_bg, outline=plate_border, width=2)
+
+            # Cheek Armor Plates
+            self.reactor_canvas.create_polygon(
+                [cx - 75, cy - 10, cx - 50, cy - 6, cx - 44, cy + 34, cx - 68, cy + 30],
+                fill="#071220", outline=plate_border, width=1
+            )
+            self.reactor_canvas.create_polygon(
+                [cx + 50, cy - 6, cx + 75, cy - 10, cx + 68, cy + 30, cx + 44, cy + 34],
+                fill="#071220", outline=plate_border, width=1
+            )
+
+            # ---------------- 4. FOREHEAD STARK AI CORE & SENSORS ----------------
+            # Forehead Arc Gem
+            self.reactor_canvas.create_polygon(
+                [cx - 16, cy - 50, cx + 16, cy - 50, cx + 10, cy - 38, cx - 10, cy - 38],
+                fill="#050E1A", outline=primary_c, width=1
+            )
+            core_pulse = 3 + math.sin(self._robot_frame * 0.15) * 1.5
+            self.reactor_canvas.create_oval(cx - core_pulse, cy - 44 - core_pulse, cx + core_pulse, cy - 44 + core_pulse, fill=primary_c, outline="#FFFFFF")
+
+            # Forehead tech markings
+            self.reactor_canvas.create_line(cx - 40, cy - 46, cx - 22, cy - 46, fill=primary_c, width=1)
+            self.reactor_canvas.create_line(cx + 22, cy - 46, cx + 40, cy - 46, fill=primary_c, width=1)
+
+            # ---------------- 5. CYBER-OPTIC ROBOT EYES & VISOR ----------------
+            # Blinking logic: Periodic robotic blink every ~100 frames
+            self._blink_counter += 1
+            if self._blink_counter > 110:
+                self._is_blinking = True
+            if self._blink_counter > 116:
+                self._is_blinking = False
+                self._blink_counter = 0
+
+            eye_y = cy - 12
+            eye_w = 26
+            eye_h = 13 if not self._is_blinking else 2
+
+            # Left Eye Socket & Lens
+            left_eye_cx = cx - 35
+            self.reactor_canvas.create_polygon(
+                [left_eye_cx - 18, eye_y, left_eye_cx - 10, eye_y - eye_h, left_eye_cx + 14, eye_y - eye_h, left_eye_cx + 18, eye_y, left_eye_cx + 12, eye_y + eye_h, left_eye_cx - 12, eye_y + eye_h],
+                fill="#030810", outline=primary_c, width=2
+            )
+
+            # Right Eye Socket & Lens
+            right_eye_cx = cx + 35
+            self.reactor_canvas.create_polygon(
+                [right_eye_cx - 18, eye_y, right_eye_cx - 12, eye_y - eye_h, right_eye_cx + 10, eye_y - eye_h, right_eye_cx + 18, eye_y, right_eye_cx + 14, eye_y + eye_h, right_eye_cx - 10, eye_y + eye_h],
+                fill="#030810", outline=primary_c, width=2
+            )
+
+            if not self._is_blinking:
+                # Glowing Optic Pupils
+                pupil_r = 5 if self._current_status_state != "REASONING" else 4
+                self.reactor_canvas.create_oval(left_eye_cx - pupil_r, eye_y - pupil_r, left_eye_cx + pupil_r, eye_y + pupil_r, fill=eye_c, outline=primary_c)
+                self.reactor_canvas.create_oval(right_eye_cx - pupil_r, eye_y - pupil_r, right_eye_cx + pupil_r, eye_y + pupil_r, fill=eye_c, outline=primary_c)
+
+                # Listening Scanline Animation
+                if self._current_status_state == "LISTENING":
+                    scan_x = math.sin(self._robot_frame * 0.25) * 12
+                    self.reactor_canvas.create_line(left_eye_cx + scan_x - 4, eye_y - 8, left_eye_cx + scan_x + 4, eye_y + 8, fill="#00FF88", width=2)
+                    self.reactor_canvas.create_line(right_eye_cx + scan_x - 4, eye_y - 8, right_eye_cx + scan_x + 4, eye_y + 8, fill="#00FF88", width=2)
+
+                # Reasoning Targeting Reticles
+                elif self._current_status_state == "REASONING":
+                    r_angle = (self._robot_frame * 12) % 360
+                    self.reactor_canvas.create_arc(left_eye_cx - 8, eye_y - 8, left_eye_cx + 8, eye_y + 8, start=r_angle, extent=120, outline=primary_c, width=1, style=tk.ARC)
+                    self.reactor_canvas.create_arc(right_eye_cx - 8, eye_y - 8, right_eye_cx + 8, eye_y + 8, start=(r_angle + 180) % 360, extent=120, outline=primary_c, width=1, style=tk.ARC)
+
+            # ---------------- 6. ANIMATED ROBOTIC SPEAKING MOUTH & VOCALIZER MATRIX ----------------
+            mouth_y = cy + 28
+
+            if self._current_status_state == "SPEAKING":
+                # Advance Speech Phase for organic phoneme cadence
+                self._speech_phase += 0.32
+
+                # Articulated Jaw Opening (Smooth phonetic opening and closing)
+                open_factor = (abs(math.sin(self._speech_phase * 2.2)) * 0.7 + abs(math.cos(self._speech_phase * 3.6)) * 0.3)
+                jaw_drop = int(5 + 14 * open_factor)
+
+                # Upper Cyber-Lip Bar
+                self.reactor_canvas.create_line(cx - 28, mouth_y - 2, cx + 28, mouth_y - 2, fill=primary_c, width=2)
+
+                # Open Metallic Mouth Cavity
+                self.reactor_canvas.create_polygon(
+                    [cx - 26, mouth_y, cx + 26, mouth_y, cx + 20, mouth_y + jaw_drop, cx - 20, mouth_y + jaw_drop],
+                    fill="#02060C", outline=plate_border, width=1
+                )
+
+                # Lower Articulated Jaw Plate
+                self.reactor_canvas.create_line(cx - 22, mouth_y + jaw_drop, cx + 22, mouth_y + jaw_drop, fill=primary_c, width=3)
+
+                # 7-Segment Animated Robotic Vocalizer Equalizer Bars inside Mouth!
+                num_bars = 7
+                for i in range(num_bars):
+                    bx = cx - 18 + i * 6
+                    bar_energy = abs(math.sin(self._speech_phase * 2.8 + i * 0.9)) * 0.8 + 0.2
+                    bar_h = max(2, int((jaw_drop - 2) * bar_energy))
+                    self.reactor_canvas.create_line(bx, mouth_y + 2, bx, mouth_y + 2 + bar_h, fill=mouth_c, width=2)
+
+                # Lateral Acoustic Vocal Ripple Waves (Radiating from Mouth Corners)
+                ripple_1 = int(abs(math.sin(self._speech_phase * 2.0)) * 16)
+                ripple_2 = int(abs(math.sin(self._speech_phase * 2.0 + 1.2)) * 24)
+                self.reactor_canvas.create_arc(cx - 40 - ripple_1, mouth_y - 10, cx - 26 - ripple_1, mouth_y + 14, start=120, extent=120, outline=primary_c, width=2, style=tk.ARC)
+                self.reactor_canvas.create_arc(cx + 26 + ripple_1, mouth_y - 10, cx + 40 + ripple_1, mouth_y + 14, start=300, extent=120, outline=primary_c, width=2, style=tk.ARC)
+                if ripple_2 > 8:
+                    self.reactor_canvas.create_arc(cx - 48 - ripple_2, mouth_y - 14, cx - 30 - ripple_2, mouth_y + 18, start=120, extent=120, outline=secondary_c, width=1, style=tk.ARC)
+                    self.reactor_canvas.create_arc(cx + 30 + ripple_2, mouth_y - 14, cx + 48 + ripple_2, mouth_y + 18, start=300, extent=120, outline=secondary_c, width=1, style=tk.ARC)
+
+            else:
+                # Closed Standby / Listening / Reasoning Vocal Slit with Glowing Micro-LEDs
+                self.reactor_canvas.create_line(cx - 26, mouth_y, cx + 26, mouth_y, fill=primary_c, width=2)
+                for i in range(5):
+                    lx = cx - 18 + i * 9
+                    self.reactor_canvas.create_oval(lx - 1.5, mouth_y - 1.5, lx + 1.5, mouth_y + 1.5, fill=mouth_c, outline="")
+
+            # ---------------- 7. HUD TELEMETRY & LABELS ----------------
+            # Top-Left Telemetry
+            self.reactor_canvas.create_text(25, 18, text="SYS // JARVIS AI CORE", fill="#4E6D91", font=("Consolas", 8, "bold"), anchor="w")
+            self.reactor_canvas.create_text(25, 32, text="VOCAL DUPLEX SYNTHESIZER: ACTIVE", fill="#395270", font=("Consolas", 7), anchor="w")
+
+            # Top-Right Telemetry
+            self.reactor_canvas.create_text(w - 25, 18, text="SILERO VAD // MONITORING", fill="#4E6D91", font=("Consolas", 8, "bold"), anchor="e")
+            self.reactor_canvas.create_text(w - 25, 32, text="OPTIC SENSORS: 60 FPS SYNC", fill="#395270", font=("Consolas", 7), anchor="e")
+
+            # Center Bottom Avatar State Label
+            self.reactor_canvas.create_text(cx, cy + 74, text=f"ROBOT AVATAR: {p['label']}", fill=primary_c, font=("Consolas", 9, "bold"))
+
+        except Exception:
+            pass
+
+        self.after(40, self._animate_robot_avatar)
+
+    # Alias for backward compatibility
+    _animate_arc_reactor = _animate_robot_avatar
 
     def log_console(self, text: str):
-        """Appends timestamped event into telemetry text box."""
+        """Appends formatted timestamped message to chat log with custom styling tags."""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert(tk.END, f"[{timestamp}] {text}\n")
+        self._msg_count += 1
+        self.chat_count_lbl.config(text=f"{self._msg_count} Events")
+
+        self.log_text.insert(tk.END, f"[{timestamp}] ", "tag_time")
+
+        if "User Command:" in text or "USER" in text or "WAKE + COMMAND:" in text:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_user")
+        elif "Jarvis:" in text:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_jarvis")
+        elif "ACTION PLAN:" in text or "⚡" in text or "PC Action:" in text or "Smart Home:" in text:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_action")
+        elif "LATENCY:" in text or "⏱️" in text:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_perf")
+        elif "HALT" in text or "🛑" in text:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_alert")
+        else:
+            self.log_text.insert(tk.END, f"{text}\n", "tag_system")
+
         self.log_text.see(tk.END)
 
     def log_event(self, text: str):
         """Alias for log_console."""
         self.log_console(text)
 
+    def _clear_console(self):
+        """Clears the console log."""
+        self.log_text.delete("1.0", tk.END)
+        self._msg_count = 0
+        self.chat_count_lbl.config(text="0 Events")
+        self.log_console("🧹 Chat and Telemetry Console Cleared.")
+
     def update_status(self, text: str, color: Optional[str] = None):
-        """Directly updates the assistant status badge."""
+        """Directly updates the assistant status badge and reactor animation state."""
         c = color or self.THEME["accent_cyan"]
-        self.status_badge.config(text=text, fg=c)
+        self.status_badge.config(text=f"● {text}", fg=c)
+
+        # Update reactor state category
+        t_upper = text.upper()
+        if "LISTENING" in t_upper:
+            self._current_status_state = "LISTENING"
+        elif "REASONING" in t_upper or "PARSING" in t_upper:
+            self._current_status_state = "REASONING"
+        elif "SPEAKING" in t_upper:
+            self._current_status_state = "SPEAKING"
+        elif "HALT" in t_upper:
+            self._current_status_state = "HALTED"
+        else:
+            self._current_status_state = "STANDBY"
 
     def set_assistant_status(self, status: str, detail: str = ""):
         color_map = {
-            "STANDBY": (self.THEME["accent_cyan"], "● STANDBY (Say 'Hey Jarvis')"),
-            "WAKE_DETECTED": (self.THEME["accent_green"], "⚡ WAKE WORD DETECTED!"),
-            "LISTENING_CMD": (self.THEME["accent_green"], "🎤 LISTENING FOR COMMAND..."),
-            "PROCESSING": (self.THEME["accent_amber"], "🧠 OLLAMA PARSING INTENT..."),
-            "SPEAKING": (self.THEME["accent_cyan"], "🔊 SPEAKING CONFIRMATION...")
+            "STANDBY": (self.THEME["accent_cyan"], "STANDBY (Say 'Hey Jarvis')"),
+            "WAKE_DETECTED": (self.THEME["accent_green"], "WAKE WORD DETECTED!"),
+            "LISTENING_CMD": (self.THEME["accent_green"], "LISTENING FOR COMMAND..."),
+            "PROCESSING": (self.THEME["accent_amber"], "OLLAMA PARSING INTENT..."),
+            "SPEAKING": (self.THEME["accent_cyan"], "SPEAKING CONFIRMATION...")
         }
-        color, default_text = color_map.get(status, (self.THEME["accent_cyan"], f"● {status}"))
+        color, default_text = color_map.get(status, (self.THEME["accent_cyan"], status))
         text = f"{default_text} {detail}" if detail else default_text
-        self.status_badge.config(text=text, fg=color)
+        self.update_status(text, color)
         if detail:
             self.log_console(f"[{status}] {detail}")
 
     def update_latency_display(self, latency_ms: float):
-        color = self.THEME["accent_green"] if latency_ms < 2000 else self.THEME["accent_amber"]
+        color = self.THEME["accent_green"] if latency_ms < 2500 else self.THEME["accent_amber"]
         self.latency_label.config(text=f"⏱️ LATENCY: {latency_ms:.0f} ms", fg=color)
+
+    def update_latency(self, latency_ms: float):
+        """Alias for update_latency_display."""
+        self.update_latency_display(latency_ms)
 
     def _start_telemetry_loop(self):
         """Periodically polls CPU % and RAM to display live workstation telemetry."""
@@ -765,8 +1247,8 @@ class ModernHomeDashboard(tk.Tk):
 
     def _handle_halt_click(self):
         """Emergency HALT button click."""
-        self.log_console("🛑 EMERGENCY OVERRIDE: Speech HALTED by user.")
-        self.update_status("● STANDBY (Emergency Override)", self.THEME["accent_red"])
+        self.log_console("🛑 EMERGENCY OVERRIDE: Speech and execution HALTED by user.")
+        self.update_status("STANDBY (Emergency Override)", self.THEME["accent_red"])
         if self.on_halt_clicked:
             self.on_halt_clicked()
 
@@ -779,14 +1261,27 @@ class ModernHomeDashboard(tk.Tk):
                 self.mic_btn.config(text="🔇 MIC: MUTED", fg=self.THEME["accent_red"], bg="#2A0B14")
                 self.log_console("🔇 Microphone Hardware: MUTED")
             else:
-                self.mic_btn.config(text="🎙️ MIC: ONLINE", fg=self.THEME["accent_green"], bg="#0B2A18")
+                self.mic_btn.config(text="🎙️ MIC: ONLINE", fg=self.THEME["accent_green"], bg="#082516")
                 self.log_console("🎙️ Microphone Hardware: ONLINE")
 
     def _handle_model_selected(self, event=None):
         selected_model = self.model_combo.get()
-        self.log_console(f"🧠 AI Model switched to: {selected_model}")
+        self.log_console(f"🧠 AI Model switched to: '{selected_model}'")
         if self.on_model_change:
             self.on_model_change(selected_model)
+
+    def _trigger_preset(self, command_text: str):
+        """Triggers a quick scenario preset command."""
+        self.cmd_entry.delete(0, tk.END)
+        self.cmd_entry.insert(0, command_text)
+        self._submit_typed_command()
+
+    def _submit_preset_voice_prompt(self):
+        """Triggers immediate single-turn voice command capture."""
+        self.update_status("LISTENING (Speak now...)", self.THEME["accent_green"])
+        self.log_console("🎙️ [VOICE]: Microphone active. Speak your command clearly (e.g. 'open spotify', 'turn on light')...")
+        if self.on_voice_trigger:
+            threading.Thread(target=self.on_voice_trigger, daemon=True).start()
 
     def _toggle_device_click(self, dev_id: str):
         """Allows direct GUI interaction to toggle devices manually."""
@@ -805,9 +1300,8 @@ class ModernHomeDashboard(tk.Tk):
 
         self.cmd_entry.delete(0, tk.END)
         self.log_console(f"⌨️ USER (Typed): \"{text}\"")
-        self.update_status("🧠 OLLAMA PARSING INTENT...", self.THEME["accent_amber"])
+        self.update_status("REASONING (Ollama LLM)...", self.THEME["accent_amber"])
 
-        # Execute on background worker thread to prevent freezing the GUI!
         if self.on_command_submit:
             def _worker():
                 self.on_command_submit(text)
@@ -887,3 +1381,4 @@ class ModernHomeDashboard(tk.Tk):
                     widgets["status_lbl"].config(text="CLOSED", fg=self.THEME["text_secondary"])
                     widgets["detail_lbl"].config(text="Position: 0% (Closed)")
                     widgets["card"].config(bg=self.THEME["card_bg"])
+
