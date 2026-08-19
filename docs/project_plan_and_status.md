@@ -45,3 +45,5 @@
 - [x] **Phase 6: Two-Turn Conversational State Machine (`src/main.py`)** — Standby wake-word phase $\leftrightarrow$ Active raw command phase with 6-second timeout fallback.
 - [x] **Phase 7: End-to-End Automated Verification (`test_system_e2e.py`)** — 18/18 tests passed (100% success rate).
 - [x] **Phase 8: Packaging & Academic Deliverables** — `package_submission.py` zip generation, `assistant_execution.log`, and `Prelim_Project_Report.pdf`.
+- [x] **Phase 9: Baseline Model Benchmark Evaluation (`benchmark_baseline.py`)** — Standardized 15-case evaluation for base `qwen3.5:2b` establishing baseline metrics (100% JSON validity, 100% action accuracy, 66.7% chit-chat null accuracy, 10.11s latency, 47.7 tok/s) documented in [`docs/baseline_benchmark_results.md`](baseline_benchmark_results.md) and [`benchmarks/baseline_qwen3.5_2b_results.json`](../benchmarks/baseline_qwen3.5_2b_results.json).
+

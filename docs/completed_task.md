@@ -36,3 +36,10 @@
 - Built comprehensive E2E verification test suite (`test_system_e2e.py`) verifying 12 acoustic wake/non-wake cases and 6 complex multi-domain agentic commands (18/18 tests passed, 100%).
 - Built automated packaging script (`package_submission.py`) generating `AI_PrelimExam_Group_Carvajal_Sarsalijo.zip`.
 - Maintained strict ISO 8601 audit logging in `assistant_execution.log`.
+
+### Phase 6: Baseline Pre-Training Model Benchmark Evaluation (`qwen3.5:2b`)
+- Developed automated evaluation harness (`benchmark_baseline.py`) with 15 standardized test scenarios across Direct IoT, Ambiguous Comfort, PC Automation, and Chit-Chat.
+- Recorded baseline metrics: **100.0% JSON validity**, **100.0% action schema accuracy**, **66.7% chit-chat null-action accuracy**, **93.3% overall score**, **10.11s latency**, and **47.7 tokens/sec**.
+- Exported raw JSON results to [`benchmarks/baseline_qwen3.5_2b_results.json`](../benchmarks/baseline_qwen3.5_2b_results.json).
+- Documented full benchmark analysis and pre-training baseline results in [`docs/baseline_benchmark_results.md`](baseline_benchmark_results.md) and [`benchmarks/README.md`](../benchmarks/README.md) for comparative evaluation against fine-tuned weights.
+
