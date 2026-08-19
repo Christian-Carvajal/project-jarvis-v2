@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Project JARVIS Baseline vs. Fine-Tuned Model Benchmark Comparison",
-    "timestamp": "2026-08-19T15:44:47.786300",
+    "timestamp": "2026-08-19T15:54:54.766163",
     "baseline_model": "qwen3.5:2b",
     "finetuned_model": "jarvis-trained-model",
     "total_test_cases": 15
@@ -30,14 +30,14 @@
     },
     "avg_latency_ms": {
       "baseline_ms": 10111.6,
-      "finetuned_ms": 6469.16,
-      "delta_ms": -3642.44,
-      "pct_change": -36.02
+      "finetuned_ms": 6646.64,
+      "delta_ms": -3464.96,
+      "pct_change": -34.27
     },
     "avg_tokens_per_sec": {
       "baseline_tps": 47.7,
-      "finetuned_tps": 67.77,
-      "delta_tps": 20.07
+      "finetuned_tps": 67.88,
+      "delta_tps": 20.18
     }
   },
   "baseline_details": [
@@ -224,10 +224,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 5814.09,
-      "tokens_evaluated": 94,
-      "tokens_per_second": 68.7,
-      "spoken_response": "Living room light illuminated.",
+      "latency_ms": 6908.9,
+      "tokens_evaluated": 165,
+      "tokens_per_second": 68.16,
+      "spoken_response": "Turning on living room light.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -246,10 +246,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6144.8,
-      "tokens_evaluated": 120,
-      "tokens_per_second": 68.12,
-      "spoken_response": "Thermostat set to 20.0\u00b0C.",
+      "latency_ms": 5858.12,
+      "tokens_evaluated": 101,
+      "tokens_per_second": 68.38,
+      "spoken_response": "Thermostat set to 20.0 degrees Celsius.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -268,10 +268,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6159.79,
-      "tokens_evaluated": 115,
-      "tokens_per_second": 67.92,
-      "spoken_response": "Front door locked. Apex security active.",
+      "latency_ms": 6168.78,
+      "tokens_evaluated": 126,
+      "tokens_per_second": 68.44,
+      "spoken_response": "Front door locked.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -290,9 +290,9 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6020.06,
-      "tokens_evaluated": 102,
-      "tokens_per_second": 67.98,
+      "latency_ms": 6057.21,
+      "tokens_evaluated": 103,
+      "tokens_per_second": 68.5,
       "spoken_response": "Kitchen light turned off.",
       "actions_generated": [
         {
@@ -312,22 +312,22 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 7112.09,
-      "tokens_evaluated": 178,
-      "tokens_per_second": 68.06,
-      "spoken_response": "Perimeter thermostat set to 24.0\u00b0C and living room illumination activated for warmth.",
+      "latency_ms": 6806.53,
+      "tokens_evaluated": 159,
+      "tokens_per_second": 68.56,
+      "spoken_response": "Cautious heating up the living room and warming the thermostat to 24.0 degrees.",
       "actions_generated": [
-        {
-          "domain": "smart_home",
-          "device_or_target": "thermostat",
-          "action": "set_temperature",
-          "value": 24.0
-        },
         {
           "domain": "smart_home",
           "device_or_target": "living_room_light",
           "action": "turn_on",
           "value": null
+        },
+        {
+          "domain": "smart_home",
+          "device_or_target": "thermostat",
+          "action": "set_temperature",
+          "value": 24.0
         }
       ],
       "interpreted_intent": "agentic_action_plan"
@@ -340,10 +340,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 7400.29,
-      "tokens_evaluated": 205,
-      "tokens_per_second": 67.98,
-      "spoken_response": "Goodnight. Lights dimmed and front door locked.",
+      "latency_ms": 8066.9,
+      "tokens_evaluated": 248,
+      "tokens_per_second": 67.14,
+      "spoken_response": "Goodnight. Lights off and door locked.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -380,10 +380,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6917.74,
-      "tokens_evaluated": 163,
-      "tokens_per_second": 65.71,
-      "spoken_response": "Movie night mode activated: entertainment unit illuminated and living room lighting turned on for cinematic viewing.",
+      "latency_ms": 6468.25,
+      "tokens_evaluated": 141,
+      "tokens_per_second": 68.47,
+      "spoken_response": "Movie night mode activated: entertainment unit illuminated and living room lighting on.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -408,10 +408,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6817.6,
-      "tokens_evaluated": 161,
-      "tokens_per_second": 67.85,
-      "spoken_response": "Securing your home and workstation. Locking front door and locking PC.",
+      "latency_ms": 6564.21,
+      "tokens_evaluated": 153,
+      "tokens_per_second": 68.67,
+      "spoken_response": "Securing your home and workstation. Locking front door and PC.",
       "actions_generated": [
         {
           "domain": "smart_home",
@@ -436,9 +436,9 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6102.0,
-      "tokens_evaluated": 115,
-      "tokens_per_second": 68.08,
+      "latency_ms": 6261.67,
+      "tokens_evaluated": 129,
+      "tokens_per_second": 68.67,
       "spoken_response": "Opening Notepad.",
       "actions_generated": [
         {
@@ -458,9 +458,9 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6310.51,
+      "latency_ms": 6316.07,
       "tokens_evaluated": 124,
-      "tokens_per_second": 67.4,
+      "tokens_per_second": 68.69,
       "spoken_response": "Opening YouTube and searching for classical music.",
       "actions_generated": [
         {
@@ -480,10 +480,10 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 7150.43,
-      "tokens_evaluated": 173,
-      "tokens_per_second": 67.99,
-      "spoken_response": "Opening Spotify application.",
+      "latency_ms": 6957.72,
+      "tokens_evaluated": 176,
+      "tokens_per_second": 68.6,
+      "spoken_response": "Opening Spotify on your desktop.",
       "actions_generated": [
         {
           "domain": "pc_automation",
@@ -502,14 +502,14 @@
       "is_chitchat": false,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 7446.03,
-      "tokens_evaluated": 203,
-      "tokens_per_second": 67.93,
-      "spoken_response": "PC lock action executed. Your computer is now secured.",
+      "latency_ms": 8908.19,
+      "tokens_evaluated": 308,
+      "tokens_per_second": 67.38,
+      "spoken_response": "PC locked.",
       "actions_generated": [
         {
           "domain": "pc_automation",
-          "device_or_target": "lock_pc",
+          "device_or_target": "system_control",
           "action": "lock_pc",
           "value": null
         }
@@ -524,10 +524,10 @@
       "is_chitchat": true,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 5743.03,
-      "tokens_evaluated": 91,
-      "tokens_per_second": 67.49,
-      "spoken_response": "Hello! I'm doing well, thank you for asking. How about you? Is there anything I can help you with today?",
+      "latency_ms": 6181.26,
+      "tokens_evaluated": 114,
+      "tokens_per_second": 68.65,
+      "spoken_response": "I am operating at full efficiency, sir. How may I assist you today?",
       "actions_generated": [],
       "interpreted_intent": "agentic_action_plan"
     },
@@ -539,10 +539,10 @@
       "is_chitchat": true,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 5639.06,
-      "tokens_evaluated": 80,
-      "tokens_per_second": 68.15,
-      "spoken_response": "You are very welcome! Is there anything else I can assist you with?",
+      "latency_ms": 5525.74,
+      "tokens_evaluated": 71,
+      "tokens_per_second": 62.93,
+      "spoken_response": "\"Thank you for your assistance. Goodnight and safe travels!\"",
       "actions_generated": [],
       "interpreted_intent": "agentic_action_plan"
     },
@@ -554,10 +554,10 @@
       "is_chitchat": true,
       "json_valid": true,
       "schema_accurate": true,
-      "latency_ms": 6259.89,
-      "tokens_evaluated": 114,
-      "tokens_per_second": 67.14,
-      "spoken_response": "I was developed by OpenAI and Apex AI, an autonomous AI smart-home and desktop agent designed for Apex Home Automations.",
+      "latency_ms": 6650.07,
+      "tokens_evaluated": 158,
+      "tokens_per_second": 66.89,
+      "spoken_response": "\"Hello! I am JARVIS, an autonomous AI smart-home and desktop assistant developed by Christian Ezekiel Carvajal, John Miko Sarsalijo, and Beomarc Andrew Cartoneros. How may I assist you today?\"",
       "actions_generated": [],
       "interpreted_intent": "agentic_action_plan"
     }

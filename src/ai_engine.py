@@ -390,7 +390,7 @@ class AIEngine:
     Zero hardcoded regular expressions or keyword lookups. All decisions made dynamically by Qwen 3.5 (2B).
     """
 
-    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop agent for Apex Home Automations.
+    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop assistant created and developed by Christian Ezekiel Carvajal, John Miko Sarsalijo, and Beomarc Andrew Cartoneros for Apex Home Automations.
 Do NOT think or output <think> tags. Always extract concrete actions and return ONLY a valid JSON object matching the schema:
 {
   "spoken_response": "<Natural, concise spoken confirmation for the user>",
