@@ -9,7 +9,7 @@
 
 | Component | Library / Tool | Purpose |
 | :--- | :--- | :--- |
-| **Local LLM Engine** | Ollama (`qwen2.5:1.5b`) | 100% agentic natural language reasoning, intent extraction, tool selection |
+| **Local LLM Engine** | Ollama (`qwen3.5:2b`) | 100% agentic natural language reasoning, intent extraction, tool selection |
 | **Schema Validation** | Pydantic v2 | Strict JSON schema constraints for multi-action execution plans |
 | **Speech-to-Text (STT)** | OpenAI Faster-Whisper (`tiny` / `base`) | Local offline voice transcription with initial prompt conditioning |
 | **Voice Activity Detection** | Silero VAD | Frame-by-frame speech segmentation and 350ms trailing silence auto-slicing |

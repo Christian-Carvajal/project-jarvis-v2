@@ -2,7 +2,7 @@
 Main Application Coordinator for Project JARVIS.
 Features:
 - Two-Turn Alternating Conversational State Machine (STANDBY_WAKE_WORD <-> ACTIVE_COMMAND)
-- 100% Pure Agentic AI Reasoning Engine (Local Ollama qwen2.5:1.5b) with Zero Hardcoded Triggers
+- 100% Pure Agentic AI Reasoning Engine (Local Ollama qwen3.5:2b) with Zero Hardcoded Triggers
 - Dynamic Cross-PC Desktop Automation & Apex Smart Home Simulator
 - Modern Stark Dark Cyberpunk GUI Dashboard with Mic & HALT Controls
 - Structured ISO Logging and Sub-2.0s Performance
@@ -18,7 +18,7 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from src.ai_engine import AIEngine, AssistantIntentResponse, DeviceAction, PCAutomationEngine
+from src.ai_engine import AIEngine, AssistantIntentResponse, DeviceAction, PCAutomationEngine, DEFAULT_MODEL
 from src.home_simulator import SmartHomeStateMachine, ModernHomeDashboard
 from src.voice_pipeline import VoicePipeline
 
@@ -49,7 +49,7 @@ class JarvisVirtualAssistant:
 
     def __init__(self):
         print("================================================================")
-        print("  ⚡ PROJECT JARVIS — 2-TURN AGENTIC AI WORKSTATION")
+        print("  ⚡ PROJECT JARVIS — 2-TURN AGENTIC AI WORKSTATION (Qwen 3.5:2B)")
         print("  100% Offline | Pure Agentic Local LLM | British JARVIS Voice")
         print("================================================================")
 
@@ -59,7 +59,7 @@ class JarvisVirtualAssistant:
 
         # 1. Core Modules
         self.state_machine = SmartHomeStateMachine(log_filepath=LOG_FILE)
-        self.ai = AIEngine(model_name="qwen2.5:1.5b")
+        self.ai = AIEngine(model_name="qwen3.5:2b")
         self.ai_engine = self.ai  # Alias for backward compatibility
         self.voice = VoicePipeline()
         self.voice_pipeline = self.voice  # Alias for backward compatibility
@@ -169,7 +169,7 @@ class JarvisVirtualAssistant:
     def _execute_command_pipeline(self, prompt: str) -> str:
         """
         Unified Agentic Execution Pipeline:
-        Prompt -> Pure Qwen 2.5 LLM -> Pydantic Schema -> (Smart Home + PC Action Dispatch) -> GUI & TTS.
+        Prompt -> Pure Qwen 3.5 (2B) LLM -> Pydantic Schema -> (Smart Home + PC Action Dispatch) -> GUI & TTS.
         """
         start_time = time.time()
         self.is_processing = True
@@ -177,7 +177,7 @@ class JarvisVirtualAssistant:
         print(f"\n[PIPELINE START]: Processing prompt -> '{prompt}'")
         if hasattr(self, 'gui') and self.gui:
             self.gui.after(0, lambda: self.gui.log_console(f"User Command: \"{prompt}\""))
-            self.gui.after(0, lambda: self.gui.update_status("Reasoning (Qwen 2.5)...", "#E040FB"))
+            self.gui.after(0, lambda: self.gui.update_status(f"Reasoning ({self.ai.model_name})...", "#E040FB"))
 
         # 1. Pure LLM Intent Extraction (Zero hardcoded regex)
         intent: AssistantIntentResponse = self.ai.parse_command(prompt)

@@ -18,16 +18,16 @@ This codebase represents the completed, fully refactored **Project JARVIS v2**. 
 1. **NO Hardcoded Triggers or Static Command Dictionaries:**
    - The system is **100% Agentic**.
    - Do NOT add rigid regex patterns (`re.match`), keyword dictionaries, or rule-based string matching to parse user intent.
-   - All intent understanding, device targeting, parameter extraction, and cross-domain action generation are performed dynamically by local **Qwen 2.5:1.5B (Ollama)** in structured JSON format (`format="json"`) validated against Pydantic v2 schemas (`DeviceAction`, `AssistantIntentResponse`).
+   - All intent understanding, device targeting, parameter extraction, and cross-domain action generation are performed dynamically by local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in structured JSON format (`format="json"`) validated against Pydantic v2 schemas (`DeviceAction`, `AssistantIntentResponse`).
 2. **Two-Turn Alternating Conversational State Machine:**
    - **Turn 1 (`STATE_STANDBY_WAKE_WORD`):** Passive acoustic gate listening strictly for `"Hey Jarvis"` / `"Jarvis"`. All non-wake words (like `"hello"`, `"good morning"`) are discarded. When wake word is detected, JARVIS speaks: *"At your service, sir. What can I do for you?"* and immediately transitions to `STATE_ACTIVE_COMMAND`.
-   - **Turn 2 (`STATE_ACTIVE_COMMAND`):** Listens directly for the raw user command **WITHOUT requiring the wake word**. Sends prompt to Qwen 2.5, dispatches actions to Smart Home + Dynamic PC engines, speaks confirmation, and automatically resets to `STATE_STANDBY_WAKE_WORD`.
+   - **Turn 2 (`STATE_ACTIVE_COMMAND`):** Listens directly for the raw user command **WITHOUT requiring the wake word**. Sends prompt to Qwen 3.5 (2B), dispatches actions to Smart Home + Dynamic PC engines, speaks confirmation, and automatically resets to `STATE_STANDBY_WAKE_WORD`.
    - **Timeout Protection:** If the user stays silent for 6 seconds while in `STATE_ACTIVE_COMMAND`, JARVIS speaks *"Returning to standby, sir."* and resets to `STATE_STANDBY_WAKE_WORD`.
 3. **Preserve Mandatory Deliverables:**
    - `main.py`: Root entry point invoking `src.main.main()`.
    - `src/main.py`: Two-Turn State Machine Coordinator.
    - `src/voice_pipeline.py`: SoundDevice capture + Silero VAD + Faster-Whisper + British TTS Worker with Emergency HALT.
-   - `src/ai_engine.py`: 100% Pure Agentic AI Engine (Ollama Qwen 2.5:1.5B) + Dynamic PC Desktop Automation Engine.
+   - `src/ai_engine.py`: 100% Pure Agentic AI Engine (Ollama Qwen 3.5:2b) + Dynamic PC Desktop Automation Engine.
    - `src/home_simulator.py`: Apex Smart Home State Machine & Dark Cyberpunk GUI Dashboard.
    - `assistant_execution.log`: Structured ISO 8601 execution logs.
    - `test_system_e2e.py`: Automated 18/18 E2E verification suite.
@@ -76,7 +76,7 @@ project-jarvis-v2/
   - `close_app(app_name)`: Gracefully terminates processes.
   - `execute_pc_action(target, action, value)`: Dispatches web searches (YouTube, Spotify, Google), system volume/mute controls, media play/pause, workstation lock (`rundll32.exe user32.dll,LockWorkStation`), and application launches.
 - `AIEngine`:
-  - `parse_command(prompt: str) -> AssistantIntentResponse`: Direct HTTP REST request to local Ollama (`qwen2.5:1.5b`) with strict JSON schema formatting.
+  - `parse_command(prompt: str) -> AssistantIntentResponse`: Direct HTTP REST request to local Ollama (`qwen3.5:2b`) with strict JSON schema formatting.
 
 ### 2. `src/voice_pipeline.py`
 - `TTSEngine`: Dedicated background worker thread with `queue.Queue` for non-blocking British TTS synthesis (Edge-TTS / Pyttsx3 SAPI5 fallback) and emergency `halt()` support.
@@ -119,7 +119,7 @@ python package_submission.py Carvajal Sarsalijo
 ## 👥 Division of Responsibilities
 
 * **Christian Ezekiel L. Carvajal (AI Engine & Automation Lead):**
-  - Architecture and implementation of `AIEngine` (100% Agentic Qwen 2.5:1.5B via Ollama JSON format).
+  - Architecture and implementation of `AIEngine` (100% Agentic Qwen 3.5 (2B) via Ollama JSON format).
   - Two-Turn Alternating Conversational State Machine in `src/main.py`.
   - Dynamic Universal PC Desktop Automation Engine (`PCAutomationEngine`).
   - Automated 18/18 E2E verification test suite (`test_system_e2e.py`).

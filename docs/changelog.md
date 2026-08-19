@@ -9,7 +9,7 @@ All notable changes to **Project JARVIS** are documented in this file.
 ### 🚀 Major Architectural Refactoring
 - **100% Pure Agentic AI Reasoning Engine:**
   - Removed all hardcoded regex matchers (`re.match`), keyword dictionaries, and rule-based dispatchers.
-  - Implemented dynamic reasoning via local **Qwen 2.5:1.5B (Ollama)** in strict JSON schema format (`format="json"`).
+  - Implemented dynamic reasoning via local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in strict JSON schema format (`format="json"`).
   - Built strict Pydantic v2 schemas (`DeviceAction` and `AssistantIntentResponse`).
 - **Two-Turn Alternating Conversational State Machine:**
   - Introduced `AssistantState` enum (`STANDBY_WAKE_WORD = 1` and `ACTIVE_COMMAND = 2`).

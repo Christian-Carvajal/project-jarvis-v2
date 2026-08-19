@@ -6,7 +6,7 @@ Features:
 - Live CPU / RAM / Latency Telemetry
 - Interactive Device Cards & Clickable Controls
 - 🎙️ Microphone Toggle (Online / Muted) & 🛑 Emergency HALT / Override Button
-- Model Selector Dropdown (qwen2.5:1.5b, etc.)
+- Model Selector Dropdown (qwen3.5:2b, etc.)
 - Asynchronous, Zero-Lag Text & Voice Command Execution
 """
 
@@ -416,7 +416,7 @@ class ModernHomeDashboard(tk.Tk):
     Equipped with:
     - 🎙️ Live Microphone Toggle (Online / Muted)
     - 🛑 Emergency HALT / Override Button
-    - Model Selection Dropdown (qwen2.5:1.5b, etc.)
+    - Model Selection Dropdown (qwen3.5:2b, etc.)
     - Real-Time Hardware Telemetry (CPU %, RAM, Latency)
     - Interactive Clickable Device Cards
     - Instant Zero-Lag Command Dispatcher
@@ -494,12 +494,12 @@ class ModernHomeDashboard(tk.Tk):
 
         self.model_combo = ttk.Combobox(
             header_frame,
-            values=["qwen2.5:1.5b", "qwen2.5:3b", "qwen2.5:7b", "deepseek-r1:8b"],
+            values=["qwen3.5:2b", "jarvis-custom", "jarvis-trained-model", "qwen3.5:4b", "qwen3.5:9b", "deepseek-r1:8b"],
             state="readonly",
-            width=14,
+            width=16,
             font=("Helvetica", 9)
         )
-        self.model_combo.set("qwen2.5:1.5b")
+        self.model_combo.set("qwen3.5:2b")
         self.model_combo.bind("<<ComboboxSelected>>", self._handle_model_selected)
         self.model_combo.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -703,7 +703,7 @@ class ModernHomeDashboard(tk.Tk):
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         self.log_console("⚡ STARK JARVIS AI Hub Initialized.")
-        self.log_console("🧠 Ollama qwen2.5:1.5b: ONLINE")
+        self.log_console("🧠 Ollama Qwen 3.5 (2B): ONLINE")
         self.log_console("🔊 British Jarvis (Edge-TTS en-GB-RyanNeural): READY")
         self.log_console("🎙️ Acoustic Gating: LISTENING FOR 'JARVIS'...")
 

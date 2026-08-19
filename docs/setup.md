@@ -12,9 +12,9 @@
 1. **Python 3.10 – 3.14** from [python.org](https://www.python.org/downloads/)  
    ⚠️ **CRITICAL:** Check the box **"Add Python to PATH"** during installation!
 2. **Ollama AI Runtime** from [ollama.com/download](https://ollama.com/download)  
-   After installation, open a terminal and pull the Qwen 2.5:1.5B model:
+   After installation, open a terminal and pull the Qwen 3.5 (2B) model:
    ```powershell
-   ollama pull qwen2.5:1.5b
+   ollama pull qwen3.5:2b
    ```
 
 ---

@@ -3,42 +3,89 @@
 
 
 ======================================================================
-TIMESTAMP: 2026-08-18T13:58:30.305839
+TIMESTAMP: 2026-08-19T11:15:01.073431
+VOICE TRANSCRIPTION: "Movie night mode"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "I have received your command: 'Movie night mode', sir.",
+  "actions": [],
+  "raw_prompt": "Movie night mode",
+  "interpreted_intent": "offline_fallback",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": null,
+  "eval_count": null,
+  "eval_duration_ms": null
+}
+STATE TRANSITIONS: No state changes
+EXECUTION LATENCY: 53582.24 ms (53.58 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:15:05.848224
 VOICE TRANSCRIPTION: "It is freezing and dark in here"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "I will turn on the living room light and set the thermostat to a warmer temperature.",
+  "spoken_response": "I've already adjusted your temperature to a comfortable level.",
   "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "thermostat",
+      "action": "set_temperature",
+      "value": 24.0
+    },
     {
       "domain": "smart_home",
       "device_or_target": "living_room_light",
       "action": "turn_on",
       "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "thermostat",
-      "action": "set_temperature",
-      "value": 22.0
     }
   ],
   "raw_prompt": "It is freezing and dark in here",
-  "interpreted_intent": "agentic_action_plan"
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 574,
+  "eval_count": 112,
+  "eval_duration_ms": 2336.026
 }
-STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); Climate Thermostat: 22.0°C (AUTO) -> 22.0°C (AUTO)
-EXECUTION LATENCY: 5967.32 ms (5.97 s)
+STATE TRANSITIONS: Climate Thermostat: 22.0°C (AUTO) -> 24.0°C (HEAT); Living Room Light: OFF -> ON (100%)
+EXECUTION LATENCY: 16398.92 ms (16.40 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-18T13:58:36.730770
+TIMESTAMP: 2026-08-19T11:15:09.781651
+VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Searching YouTube for classical music, sir.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "classical music"
+    }
+  ],
+  "raw_prompt": "Open YouTube and search for classical music",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 768,
+  "eval_count": 49,
+  "eval_duration_ms": 1027.454
+}
+STATE TRANSITIONS: PC Action: open_website -> youtube (classical music)
+EXECUTION LATENCY: 8706.91 ms (8.71 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:15:58.577794
 VOICE TRANSCRIPTION: "Goodnight Jarvis, I am going to bed now"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "Goodnight! I'll be here when you wake up.",
+  "spoken_response": "Goodnight! Lighting adjusted and door secured.",
   "actions": [
     {
       "domain": "smart_home",
-      "device_or_target": "bedroom_light",
+      "device_or_target": "living_room_light",
       "action": "turn_off",
       "value": null
     },
@@ -47,27 +94,56 @@ PARSED JSON PAYLOAD:
       "device_or_target": "front_door_lock",
       "action": "lock",
       "value": null
-    },
-    {
-      "domain": "pc_automation",
-      "device_or_target": "open_app",
-      "action": "open_task_manager",
-      "value": null
     }
   ],
   "raw_prompt": "Goodnight Jarvis, I am going to bed now",
-  "interpreted_intent": "agentic_action_plan"
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 2049,
+  "eval_count": 76,
+  "eval_duration_ms": 1593.424
 }
-STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Front Door Lock: LOCKED -> LOCKED; PC Action: open_task_manager -> open_app
-EXECUTION LATENCY: 6423.68 ms (6.42 s)
+STATE TRANSITIONS: Living Room Light: ON (100%) -> OFF; Front Door Lock: LOCKED -> LOCKED
+EXECUTION LATENCY: 52727.91 ms (52.73 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-18T13:58:42.855538
+TIMESTAMP: 2026-08-19T11:16:00.700523
+VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening notepad for you, sir. Activating lighting for the lounge area.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "notepad",
+      "action": "open_app",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Open Notepad and turn on the living room light",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 721,
+  "eval_count": 84,
+  "eval_duration_ms": 1782.03
+}
+STATE TRANSITIONS: PC Action: open_app -> notepad; Living Room Light: ON (100%) -> ON (100%)
+EXECUTION LATENCY: 50917.94 ms (50.92 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:16:11.978470
 VOICE TRANSCRIPTION: "Movie night mode"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "Sure, I'll set the living room light to a cozy ambiance and turn on the entertainment unit for a movie night.",
+  "spoken_response": "Movie night set up complete! Lights adjusted and entertainment ready.",
   "actions": [
     {
       "domain": "smart_home",
@@ -76,118 +152,32 @@ PARSED JSON PAYLOAD:
       "value": null
     },
     {
-      "domain": "smart_home",
+      "domain": "pc_automation",
       "device_or_target": "entertainment_unit",
       "action": "turn_on",
       "value": null
     }
   ],
   "raw_prompt": "Movie night mode",
-  "interpreted_intent": "agentic_action_plan"
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 633,
+  "eval_count": 117,
+  "eval_duration_ms": 2448.838
 }
-STATE TRANSITIONS: Living Room Light: ON (100%) -> ON (100%); Entertainment Unit: OFF -> ACTIVE
-EXECUTION LATENCY: 6123.29 ms (6.12 s)
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%); PC Action: turn_on -> entertainment_unit
+EXECUTION LATENCY: 13399.53 ms (13.40 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-18T13:58:52.669963
-VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Opening YouTube and searching for 'classical music'.",
-  "actions": [
-    {
-      "domain": "smart_home",
-      "device_or_target": "living_room_light",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "kitchen_light",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "bedroom_light",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "entertainment_unit",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "security_alarm",
-      "action": "disarm",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "ceiling_fan",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "window_blinds",
-      "action": "open",
-      "value": null
-    },
-    {
-      "domain": "pc_automation",
-      "device_or_target": "open_website",
-      "action": "open_website",
-      "value": "classical music"
-    }
-  ],
-  "raw_prompt": "Open YouTube and search for classical music",
-  "interpreted_intent": "agentic_action_plan"
-}
-STATE TRANSITIONS: Living Room Light: ON (100%) -> ON (100%); Kitchen Light: OFF -> ON (100%); Bedroom Light: OFF -> ON (100%); Entertainment Unit: ACTIVE -> ACTIVE; Security Alarm: DISARMED -> DISARMED; Ceiling Fan: OFF -> HIGH; Window Blinds: 100% -> 100%; PC Action: open_website -> open_website (classical music)
-EXECUTION LATENCY: 9812.53 ms (9.81 s)
-======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-18T13:58:58.471442
-VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
-PARSED JSON PAYLOAD:
-{
-  "spoken_response": "Opening Notepad and turning on the living room light.",
-  "actions": [
-    {
-      "domain": "smart_home",
-      "device_or_target": "living_room_light",
-      "action": "turn_on",
-      "value": null
-    },
-    {
-      "domain": "pc_automation",
-      "device_or_target": "open_app",
-      "action": "open_app",
-      "value": "notepad"
-    }
-  ],
-  "raw_prompt": "Open Notepad and turn on the living room light",
-  "interpreted_intent": "agentic_action_plan"
-}
-STATE TRANSITIONS: Living Room Light: ON (100%) -> ON (100%); PC Action: open_app -> open_app (notepad)
-EXECUTION LATENCY: 5799.86 ms (5.80 s)
-======================================================================
-
-======================================================================
-TIMESTAMP: 2026-08-18T13:59:04.249360
+TIMESTAMP: 2026-08-19T11:16:13.776004
 VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
 PARSED JSON PAYLOAD:
 {
-  "spoken_response": "I have locked your PC and your front door.",
+  "spoken_response": "Okay sir, locking your PC terminal and securing the front door.",
   "actions": [
     {
-      "domain": "pc_automation",
+      "domain": "system_control",
       "device_or_target": "lock_pc",
       "action": "lock",
       "value": null
@@ -200,8 +190,99 @@ PARSED JSON PAYLOAD:
     }
   ],
   "raw_prompt": "I am heading out, lock my PC and lock the front door",
-  "interpreted_intent": "agentic_action_plan"
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 754,
+  "eval_count": 78,
+  "eval_duration_ms": 1640.867
 }
-STATE TRANSITIONS: PC Action: lock -> lock_pc; Front Door Lock: LOCKED -> LOCKED
-EXECUTION LATENCY: 5776.31 ms (5.78 s)
+STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; Front Door Lock: LOCKED -> LOCKED
+EXECUTION LATENCY: 13074.25 ms (13.07 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:16:21.489565
+VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Opening YouTube and searching for classical music now.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "youtube",
+      "action": "open_website",
+      "value": "classical music"
+    }
+  ],
+  "raw_prompt": "Open YouTube and search for classical music",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 621,
+  "eval_count": 74,
+  "eval_duration_ms": 1540.614
+}
+STATE TRANSITIONS: PC Action: open_website -> youtube (classical music)
+EXECUTION LATENCY: 9510.20 ms (9.51 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:16:31.312555
+VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Notepad opened, living room light is brightening.",
+  "actions": [
+    {
+      "domain": "pc_automation",
+      "device_or_target": "notepad",
+      "action": "open_app",
+      "value": null
+    },
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Open Notepad and turn on the living room light",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 599,
+  "eval_count": 115,
+  "eval_duration_ms": 2406.647
+}
+STATE TRANSITIONS: PC Action: open_app -> notepad; Living Room Light: ON (100%) -> ON (100%)
+EXECUTION LATENCY: 9822.09 ms (9.82 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-19T11:16:42.347489
+VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Understood, I've locked your front door and PC while you're heading out.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "front_door_lock",
+      "action": "lock",
+      "value": null
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "system_control",
+      "action": "lock_pc",
+      "value": null
+    }
+  ],
+  "raw_prompt": "I am heading out, lock my PC and lock the front door",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "qwen3.5:2b",
+  "prompt_eval_count": 650,
+  "eval_count": 120,
+  "eval_duration_ms": 2499.809
+}
+STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; PC Action: lock_pc -> system_control
+EXECUTION LATENCY: 11033.90 ms (11.03 s)
 ======================================================================

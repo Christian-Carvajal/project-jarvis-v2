@@ -11,7 +11,7 @@
 
 ### Phase 1: Elimination of Hardcoded Trigger Rules & Regex Matching
 - Removed all static regex matching (`re.match`), hardcoded keyword dictionaries, and rule-based command dispatchers.
-- Upgraded `src/ai_engine.py` to use pure agentic LLM reasoning via local **Qwen 2.5:1.5B (Ollama)** in strict JSON format (`format="json"`).
+- Upgraded `src/ai_engine.py` to use pure agentic LLM reasoning via local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in strict JSON format (`format="json"`).
 - Implemented robust Pydantic v2 schemas (`DeviceAction` and `AssistantIntentResponse`).
 
 ### Phase 2: Implementation of Two-Turn Conversational State Machine
