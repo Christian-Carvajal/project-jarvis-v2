@@ -89,7 +89,8 @@ class SmartThermostat(SmartDevice):
         self.mode = mode
 
     def set_temperature(self, temp: float):
-        self.target_temp = max(16.0, min(32.0, float(temp)))
+        # Support extended temperature range (10.0°C to 60.0°C)
+        self.target_temp = max(10.0, min(60.0, float(temp)))
         if self.target_temp > self.ambient_temp + 1.0:
             self.mode = "HEAT"
         elif self.target_temp < self.ambient_temp - 1.0:
@@ -97,6 +98,13 @@ class SmartThermostat(SmartDevice):
         else:
             self.mode = "AUTO"
         self.last_updated = datetime.now()
+
+    def toggle(self):
+        """Allows manual UI click to cycle temperature targets."""
+        if self.target_temp >= 28.0:
+            self.set_temperature(18.0)
+        else:
+            self.set_temperature(self.target_temp + 2.0)
 
     def get_state(self) -> Dict[str, Any]:
         return {
