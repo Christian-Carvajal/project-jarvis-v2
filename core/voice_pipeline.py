@@ -17,7 +17,7 @@ class VoicePipeline:
         stt_engine: Optional[STTEngine] = None,
         action_engine: Optional[ActionEngine] = None,
     ):
-        self.llm = llm_manager or LLMManager(model_name="qwen2.5:1.5b")
+        self.llm = llm_manager or LLMManager(model_name="jarvis-trained-model")
         self.tts = tts_engine or TTSEngine()
         self.stt = stt_engine or STTEngine()
         self.action_engine = action_engine or ActionEngine()

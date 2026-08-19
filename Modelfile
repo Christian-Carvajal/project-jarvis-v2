@@ -1,0 +1,21 @@
+FROM ./Qwen3.5-2B.Q4_K_M.gguf
+
+PARAMETER temperature 0
+PARAMETER top_p 0.95
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+PARAMETER stop "###"
+PARAMETER stop "\n\n"
+
+TEMPLATE """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+You are JARVIS, an autonomous AI smart home and desktop assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo. Parse the user request into structured JSON actions. For identity inquiries or general conversation, state your creators clearly in spoken_response and return an empty actions list.
+
+### Input:
+{{ .Prompt }}
+
+### Response:
+<think>
+</think>
+"""

@@ -7,14 +7,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Temporary Caches & Build Files
-*.tmp
-*.temp
+# Large Model Weights & Archives
+*.gguf
+*.bin
+*.pt
+*.safetensors
 *.zip
-temp_*
-dist/
-build/
-*.egg-info/
+Jarvis*/
+checkpoint-*/
 
 # Audio scratch files (preserve code)
 scratch/

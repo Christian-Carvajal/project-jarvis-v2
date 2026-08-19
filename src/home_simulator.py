@@ -6,7 +6,7 @@ Features:
 - Live CPU / RAM / Latency Telemetry
 - Interactive Device Cards & Clickable Controls
 - 🎙️ Microphone Toggle (Online / Muted) & 🛑 Emergency HALT / Override Button
-- Model Selector Dropdown (qwen2.5:1.5b, etc.)
+- Model Selector Dropdown (qwen3.5:2b, etc.)
 - Asynchronous, Zero-Lag Text & Voice Command Execution
 """
 
@@ -89,7 +89,8 @@ class SmartThermostat(SmartDevice):
         self.mode = mode
 
     def set_temperature(self, temp: float):
-        self.target_temp = max(16.0, min(32.0, float(temp)))
+        # Support extended temperature range (10.0°C to 60.0°C)
+        self.target_temp = max(10.0, min(60.0, float(temp)))
         if self.target_temp > self.ambient_temp + 1.0:
             self.mode = "HEAT"
         elif self.target_temp < self.ambient_temp - 1.0:
@@ -97,6 +98,13 @@ class SmartThermostat(SmartDevice):
         else:
             self.mode = "AUTO"
         self.last_updated = datetime.now()
+
+    def toggle(self):
+        """Allows manual UI click to cycle temperature targets."""
+        if self.target_temp >= 28.0:
+            self.set_temperature(18.0)
+        else:
+            self.set_temperature(self.target_temp + 2.0)
 
     def get_state(self) -> Dict[str, Any]:
         return {
@@ -416,7 +424,7 @@ class ModernHomeDashboard(tk.Tk):
     Equipped with:
     - 🎙️ Live Microphone Toggle (Online / Muted)
     - 🛑 Emergency HALT / Override Button
-    - Model Selection Dropdown (qwen2.5:1.5b, etc.)
+    - Model Selection Dropdown (qwen3.5:2b, etc.)
     - Real-Time Hardware Telemetry (CPU %, RAM, Latency)
     - Interactive Clickable Device Cards
     - Instant Zero-Lag Command Dispatcher
@@ -494,12 +502,12 @@ class ModernHomeDashboard(tk.Tk):
 
         self.model_combo = ttk.Combobox(
             header_frame,
-            values=["qwen2.5:1.5b", "qwen2.5:3b", "qwen2.5:7b", "deepseek-r1:8b"],
+            values=["jarvis-trained-model"],
             state="readonly",
-            width=14,
+            width=20,
             font=("Helvetica", 9)
         )
-        self.model_combo.set("qwen2.5:1.5b")
+        self.model_combo.set("jarvis-trained-model")
         self.model_combo.bind("<<ComboboxSelected>>", self._handle_model_selected)
         self.model_combo.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -703,7 +711,7 @@ class ModernHomeDashboard(tk.Tk):
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         self.log_console("⚡ STARK JARVIS AI Hub Initialized.")
-        self.log_console("🧠 Ollama qwen2.5:1.5b: ONLINE")
+        self.log_console("🧠 Ollama Qwen 3.5 (2B): ONLINE")
         self.log_console("🔊 British Jarvis (Edge-TTS en-GB-RyanNeural): READY")
         self.log_console("🎙️ Acoustic Gating: LISTENING FOR 'JARVIS'...")
 

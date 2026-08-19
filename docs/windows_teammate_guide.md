@@ -16,16 +16,16 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 ---
 
 ### 2. Ollama Daemon Setup & Verification
-Ensure Ollama is running and the `qwen2.5:1.5b` model is downloaded:
+Ensure Ollama is running and the `qwen3.5:2b` model is downloaded:
 ```powershell
 # 1. Check if Ollama is running
 curl -s http://localhost:11434/api/tags
 
-# 2. Pull Qwen 2.5:1.5B
-ollama pull qwen2.5:1.5b
+# 2. Pull Qwen 3.5 (2B)
+ollama pull qwen3.5:2b
 
 # 3. Test simple query
-ollama run qwen2.5:1.5b "Hello"
+ollama run qwen3.5:2b "Hello"
 ```
 
 ---

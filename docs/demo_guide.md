@@ -9,7 +9,7 @@
 ## 🎬 Live Demonstration Script (Step-by-Step)
 
 ### 1. Introduction & State Machine Explanation (30 seconds)
-- **Presenter:** *"Good day, Prof. Malitao and panel. We present Project JARVIS v2, an offline, local-first artificial intelligence assistant engineered with a Two-Turn Conversational State Machine and 100% Pure Agentic AI Reasoning using Qwen 2.5:1.5B via Ollama."*
+- **Presenter:** *"Good day, Prof. Malitao and panel. We present Project JARVIS v2, an offline, local-first artificial intelligence assistant engineered with a Two-Turn Conversational State Machine and 100% Pure Agentic AI Reasoning using Qwen 3.5 (2B) via Ollama."*
 - **Key Point:** Point out that all hardcoded regex and keyword triggers have been completely eliminated.
 
 ---
@@ -28,7 +28,7 @@
   - Say: *"Turn on the living room light and set the temperature to 24 degrees"*
   - **Expected:**
     1. Whisper STT captures raw command with Silero VAD auto-slicing.
-    2. Local Qwen 2.5:1.5B dynamically outputs JSON payload with 2 actions (`living_room_light.turn_on`, `thermostat.set_temperature`).
+    2. Local Qwen 3.5 (2B) dynamically outputs JSON payload with 2 actions (`living_room_light.turn_on`, `thermostat.set_temperature`).
     3. GUI device cards update in real-time.
     4. JARVIS speaks spoken confirmation and resets back to `Standby` (`#00E5FF`).
 
@@ -47,7 +47,7 @@
 ### 5. Demonstration 4: Ambiguous Natural Language Reasoning
 - **Action:** Say *"Hey Jarvis"*, wait for acknowledgment, then say:
   - Say: *"It is freezing and dark in here"*
-  - **Expected:** Qwen 2.5 reasons dynamically that the user is cold and in the dark $\rightarrow$ turns on living room lights and adjusts thermostat $\rightarrow$ confirms verbally.
+  - **Expected:** Qwen 3.5 (2B) reasons dynamically that the user is cold and in the dark $\rightarrow$ turns on living room lights and adjusts thermostat $\rightarrow$ confirms verbally.
 
 ---
 
@@ -62,7 +62,7 @@
 ## 🎯 Anticipated Technical Q&A with Prof. Malitao
 
 **Q1: How do you guarantee the AI is 100% agentic and not using hardcoded regex keywords?**  
-**Answer:** *"All raw speech transcriptions are passed directly into `AIEngine.parse_command(prompt)`. We utilize Ollama's structured JSON format with a strict Pydantic v2 schema (`AssistantIntentResponse`). The local Qwen 2.5:1.5B LLM autonomously classifies the intent, maps the target entity, extracts parameters, and selects tools across both Smart Home and PC Automation domains."*
+**Answer:** *"All raw speech transcriptions are passed directly into `AIEngine.parse_command(prompt)`. We utilize Ollama's structured JSON format with a strict Pydantic v2 schema (`AssistantIntentResponse`). The local Qwen 3.5 (2B) LLM autonomously classifies the intent, maps the target entity, extracts parameters, and selects tools across both Smart Home and PC Automation domains."*
 
 **Q2: How does the Two-Turn Conversational State Machine work?**  
 **Answer:** *"We implemented an explicit state machine (`AssistantState.STANDBY_WAKE_WORD` and `AssistantState.ACTIVE_COMMAND`). In Turn 1, the microphone acts as an acoustic gate listening strictly for 'Hey Jarvis'. Once detected, JARVIS acknowledges and enters Turn 2, where it captures the user's raw command without requiring the wake word again. It automatically resets to standby after execution, or after a 6-second timeout if no speech is detected."*

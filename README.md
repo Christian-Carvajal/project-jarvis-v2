@@ -12,7 +12,7 @@
 ## 📌 Executive Summary
 
 **Project JARVIS v2** is a 100% offline, local-first artificial intelligence workstation and smart home automation assistant. It features:
-1. **100% Pure Agentic AI Reasoning:** Zero hardcoded trigger rules, keyword dictionaries, or regex matchers. All natural language understanding, intent extraction, parameter resolution, and cross-domain tool selection are decided dynamically by local **Qwen 2.5:1.5B (Ollama)** in strict Pydantic v2 JSON schemas.
+1. **100% Pure Agentic AI Reasoning:** Zero hardcoded trigger rules, keyword dictionaries, or regex matchers. All natural language understanding, intent extraction, parameter resolution, and cross-domain tool selection are decided dynamically by local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in strict Pydantic v2 JSON schemas.
 2. **Two-Turn Alternating Conversational State Machine:** Strict distinction between standby wake-word listening (`STATE_STANDBY_WAKE_WORD`) and direct command execution (`STATE_ACTIVE_COMMAND`) with 6-second timeout fallback.
 3. **Dynamic Universal PC Desktop Automation Engine:** 100% portable cross-PC automation (zero hardcoded file paths) capable of launching/closing applications, deep web searching (YouTube, Spotify, GitHub, Google), controlling system audio/media, and locking the workstation.
 4. **Apex Smart Home Simulator:** Real-time multi-device simulator (living room, kitchen, bedroom lights, thermostat, door lock, blinds, fan, security alarm, and entertainment unit).
@@ -24,10 +24,10 @@
 
 | Requirement | Implementation & Architectural Guarantee |
 | :--- | :--- |
-| **1. 100% Pure Agentic AI (No Hardcoded Commands)** | All user speech is forwarded directly to `ai_engine.parse_command(prompt)`. Local **Qwen 2.5:1.5B** computes multi-device action plans without any static regex or keyword matching. |
+| **1. 100% Pure Agentic AI (No Hardcoded Commands)** | All user speech is forwarded directly to `ai_engine.parse_command(prompt)`. Local **Qwen 3.5 (2B)** computes multi-device action plans without any static regex or keyword matching. |
 | **2. Two-Turn Conversational State Machine** | **Turn 1:** User says *"Hey Jarvis"* $\rightarrow$ JARVIS replies: *"At your service, sir. What can I do for you?"* $\rightarrow$ Transitions to active mode.<br>**Turn 2:** User gives command directly without wake word $\rightarrow$ JARVIS executes & replies $\rightarrow$ Automatically resets to standby. |
 | **3. Strict Rubric Deliverables** | Preserved exact file structure: `main.py`, `src/voice_pipeline.py`, `src/ai_engine.py`, `src/home_simulator.py`, `assistant_execution.log`, and `Prelim_Project_Report.pdf`. |
-| **4. Sub-2.0s Real-Time Latency** | Optimized Whisper STT (Silero VAD 350ms trailing silence auto-slicing), VRAM-pinned Qwen 2.5 inference, and streaming TTS worker. |
+| **4. Sub-2.0s Real-Time Latency** | Optimized Whisper STT (Silero VAD 350ms trailing silence auto-slicing), VRAM-pinned Qwen 3.5 (2B) inference, and streaming TTS worker. |
 | **5. Strict Structured Audit Logging** | Every interaction generates an ISO 8601 timestamped record in `assistant_execution.log` containing raw transcriptions, validated JSON payloads, state transitions, and execution latency. |
 
 ---
@@ -56,7 +56,7 @@ stateDiagram-v2
     Timeout --> SpeakTimeout: "Returning to standby, sir."
     SpeakTimeout --> STATE_STANDBY_WAKE_WORD: Status Cyan (#00E5FF)
 
-    LLMReasoning --> ActionPlan: Qwen 2.5:1.5B JSON Output
+    LLMReasoning --> ActionPlan: Qwen 3.5 (2B) JSON Output
     ActionPlan --> Dispatch: Smart Home + Dynamic PC Execution
     Dispatch --> SpeakReply: Spoken Confirmation Response
     SpeakReply --> STATE_STANDBY_WAKE_WORD: Status Cyan (#00E5FF)
@@ -92,7 +92,7 @@ stateDiagram-v2
 1. **Python 3.10 – 3.14** installed with PATH enabled.
 2. **Ollama AI Runtime** installed from [ollama.com](https://ollama.com).
    ```bash
-   ollama pull qwen2.5:1.5b
+   ollama pull qwen3.5:2b
    ```
 
 ### 1. Launch Project JARVIS

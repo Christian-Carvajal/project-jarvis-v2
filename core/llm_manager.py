@@ -10,10 +10,7 @@ class LLMManager:
     """Dynamic Ollama LLM Manager supporting asynchronous streaming, model switching, auto-pulling missing GGUF models, and offline fallback handling."""
 
     AVAILABLE_MODELS = {
-        "ultra-fast": "qwen2.5:1.5b",  # Default ultra-low latency model
-        "fast": "qwen3.5:4b",        # Balanced conversational model
-        "task": "qwen3.5:9b",        # Structured task execution
-        "reasoning": "deepseek-r1:8b" # Deep reasoning engine
+        "fine-tuned": "jarvis-trained-model" # Dedicated fine-tuned agentic model
     }
 
     SYSTEM_PROMPT = (
@@ -22,7 +19,7 @@ class LLMManager:
         "Respond concisely, authoritatively, and professionally. Keep conversational voice responses short and direct."
     )
 
-    def __init__(self, model_name: str = "qwen2.5:1.5b", default_model_key: Optional[str] = None, base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "jarvis-trained-model", default_model_key: Optional[str] = None, base_url: str = "http://localhost:11434"):
         target = default_model_key or model_name
         self.base_url = base_url
         self.active_model = self.AVAILABLE_MODELS.get(target, target)

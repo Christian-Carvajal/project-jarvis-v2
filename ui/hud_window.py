@@ -153,7 +153,7 @@ class JarvisHUDWindow(QMainWindow):
 
         # Sync model dropdown with LLMManager active model at startup
         if hasattr(self.pipeline_thread, 'pipeline') and hasattr(self.pipeline_thread.pipeline, 'llm'):
-            active_model = getattr(self.pipeline_thread.pipeline.llm, 'model_name', 'qwen2.5:1.5b')
+            active_model = getattr(self.pipeline_thread.pipeline.llm, 'model_name', 'jarvis-trained-model')
             index = self.model_selector.findText(active_model)
             if index != -1:
                 self.model_selector.setCurrentIndex(index)
@@ -214,12 +214,9 @@ class JarvisHUDWindow(QMainWindow):
             }
         """)
 
-        # Add models dynamically with default ultra-fast at index 0
+        # Exclusively use fine-tuned jarvis-trained-model
         self.model_selector.addItems([
-            "qwen2.5:1.5b",
-            "qwen3.5:4b",
-            "qwen3.5:9b",
-            "deepseek-r1:8b"
+            "jarvis-trained-model"
         ])
         self.model_selector.currentTextChanged.connect(self._on_model_changed)
         top_bar.addWidget(self.model_selector)

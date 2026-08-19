@@ -39,7 +39,7 @@ def run_comprehensive_e2e_tests():
         f.write("# Two-Turn Conversational State Machine & Pure Agentic LLM Reasoning\n\n")
 
     state_machine = SmartHomeStateMachine(log_filepath=log_file)
-    ai_engine = AIEngine(model_name="qwen2.5:1.5b")
+    ai_engine = AIEngine(model_name="jarvis-trained-model")
     pc_engine = PCAutomationEngine()
     voice_pipeline = VoicePipeline(wake_words=["jarvis", "hey jarvis", "hi jarvis", "hello jarvis", "okay jarvis"])
 

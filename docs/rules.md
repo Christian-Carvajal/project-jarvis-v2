@@ -5,7 +5,7 @@
 1. **Zero Hardcoded Triggers / Commands:**
    - The system is **100% Agentic**.
    - NEVER add rigid regex patterns (`re.match`), hardcoded keyword dictionaries, or rule-based string matching to execute commands.
-   - All natural language understanding, intent extraction, parameter resolution, and cross-domain action generation MUST be decided dynamically by local **Qwen 2.5:1.5B (Ollama)** in strict JSON schema format (`format="json"`) validated against Pydantic v2 schemas (`DeviceAction`, `AssistantIntentResponse`).
+   - All natural language understanding, intent extraction, parameter resolution, and cross-domain action generation MUST be decided dynamically by local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in strict JSON schema format (`format="json"`) validated against Pydantic v2 schemas (`DeviceAction`, `AssistantIntentResponse`).
 
 2. **Two-Turn Alternating Conversational State Machine:**
    - Maintain the strict separation of states:

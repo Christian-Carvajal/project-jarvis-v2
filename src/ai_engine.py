@@ -1,13 +1,12 @@
 """
 AI Engine Module for Project JARVIS (Apex Home Automations & Stark PC Suite).
-100% Pure Agentic AI Reasoning Engine interfacing directly with local Ollama (qwen2.5:1.5b).
-Zero hardcoded trigger rules, keyword dictionaries, or regex pattern matching.
+100% Pure Agentic AI Reasoning Engine interfacing directly with local Ollama (qwen3.5:2b).
+Zero hardcoded trigger rules, keyword dictionaries, or regular expression matching.
 All intent classification, tool selection, and parameter extraction are decided dynamically by the local LLM.
 """
 
 import os
 import sys
-import re
 import time
 import json
 import shutil
@@ -33,6 +32,9 @@ try:
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
+
+DEFAULT_MODEL = "jarvis-trained-model"
+CUSTOM_MODEL_CANDIDATES = ["jarvis-trained-model"]
 
 
 class DeviceAction(BaseModel):
@@ -82,6 +84,10 @@ class AssistantIntentResponse(BaseModel):
     actions: List[DeviceAction] = Field(default_factory=list)
     raw_prompt: Optional[str] = Field(default="")
     interpreted_intent: Optional[str] = Field(default="agentic_action_plan")
+    model_name: Optional[str] = Field(default=DEFAULT_MODEL)
+    prompt_eval_count: Optional[int] = Field(default=None)
+    eval_count: Optional[int] = Field(default=None)
+    eval_duration_ms: Optional[float] = Field(default=None)
 
     @model_validator(mode="before")
     @classmethod
@@ -102,6 +108,7 @@ class PCAutomationEngine:
     """
     Dynamic Universal PC Desktop Automation Engine.
     Executes actions decided by the LLM (opening apps, closing processes, web navigation, system controls).
+    Zero hardcoded user paths or regular expressions.
     """
 
     KNOWN_PROCESS_MAP = {
@@ -167,8 +174,12 @@ class PCAutomationEngine:
                 try:
                     for root, _, files in os.walk(root_dir):
                         for file in files:
-                            if file.lower().endswith((".lnk", ".exe", ".url")):
-                                key = file.rsplit(".", 1)[0].lower()
+                            fl = file.lower()
+                            if fl.endswith(".lnk") or fl.endswith(".exe") or fl.endswith(".url"):
+                                if "." in file:
+                                    key = file.rsplit(".", 1)[0].lower()
+                                else:
+                                    key = file.lower()
                                 full_p = os.path.join(root, file)
                                 if key not in cls._app_cache:
                                     cls._app_cache[key] = full_p
@@ -246,8 +257,11 @@ class PCAutomationEngine:
 
     @classmethod
     def close_app(cls, app_name: str) -> Tuple[bool, str]:
-        """Terminates active process gracefully or via taskkill."""
-        clean = re.sub(r'\.exe$', '', app_name.strip(), flags=re.IGNORECASE).lower()
+        """Terminates active process gracefully or via taskkill without regular expressions."""
+        clean = app_name.strip()
+        if clean.lower().endswith(".exe"):
+            clean = clean[:-4]
+        clean = clean.lower()
         proc_exe = cls.KNOWN_PROCESS_MAP.get(clean, f"{clean}.exe")
 
         try:
@@ -372,12 +386,23 @@ class PCAutomationEngine:
 
 class AIEngine:
     """
-    Pure Agentic Local AI Engine interfacing directly with Ollama (qwen2.5:1.5b).
-    Zero hardcoded regex or keyword lookups. All decisions made dynamically by Qwen 2.5.
+    Pure Agentic Local AI Engine interfacing directly with Ollama (qwen3.5:2b).
+    Zero hardcoded regular expressions or keyword lookups. All decisions made dynamically by Qwen 3.5 (2B).
     """
 
-    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop agent for Apex Home Automations.
-Analyze the user's natural language request (which may be ambiguous, conversational, or compound) and determine the exact list of actions to execute.
+    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo for Apex Home Automations.
+Do NOT think or output <think> tags. Always extract concrete actions and return ONLY a valid JSON object matching the schema:
+{
+  "spoken_response": "<Natural, concise spoken confirmation for the user>",
+  "actions": [
+    {
+      "domain": "smart_home" | "pc_automation",
+      "device_or_target": "<target_identifier>",
+      "action": "<action_identifier>",
+      "value": <numeric_value | string_parameter | null>
+    }
+  ]
+}
 
 Available Target Devices & Capabilities:
 - Smart Home (domain: "smart_home"):
@@ -393,23 +418,36 @@ Available Target Devices & Capabilities:
   * open_website: targets [youtube, spotify, github, google, canvas] (value: optional search query)
   * system_control: targets [lock_pc, open_task_manager, open_explorer]
 
-Output Format: Return ONLY a valid JSON object matching the schema:
-{
-  "spoken_response": "<Natural, concise spoken confirmation for the user>",
-  "actions": [
-    {
-      "domain": "smart_home" | "pc_automation",
-      "device_or_target": "<target_identifier>",
-      "action": "<action_identifier>",
-      "value": <numeric_value | string_parameter | null>
-    }
-  ]
-}
+Contextual Reasoning Guidelines:
+- Freezing / cold: set thermostat to 24.0°C and turn on living room light.
+- Bed / goodnight: turn off lights and lock the front door.
+- Movie mode / movie night: turn on entertainment_unit and turn on living_room_light.
+- Leaving / heading out: lock front door and lock PC.
+- YouTube / web search: open website with search query string in value.
+- Chit-chat / Greetings / Thanks / Questions: return actions: [].
 """
 
-    def __init__(self, model_name: str = "qwen2.5:1.5b", base_url: str = "http://localhost:11434"):
-        self.model_name = model_name
+    def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
         self.base_url = base_url.rstrip("/")
+        self.model_name = self._resolve_model_name(model_name)
+
+    def _resolve_model_name(self, requested_model: Optional[str]) -> str:
+        """Dynamically discovers fine-tuned or standardized models from local Ollama."""
+        if requested_model:
+            return requested_model
+
+        try:
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=1.5)
+            if resp.status_code == 200:
+                available_models = [m.get("name", "").lower() for m in resp.json().get("models", [])]
+                for candidate in CUSTOM_MODEL_CANDIDATES:
+                    for avail in available_models:
+                        if candidate in avail or avail.startswith(candidate):
+                            return candidate
+        except Exception:
+            pass
+
+        return DEFAULT_MODEL
 
     def _check_ollama_health(self) -> bool:
         """Verifies connection to local Ollama daemon."""
@@ -422,7 +460,7 @@ Output Format: Return ONLY a valid JSON object matching the schema:
     def parse_command(self, prompt: str) -> AssistantIntentResponse:
         """
         Pure Agentic Intent Extraction:
-        Sends prompt directly to local Qwen 2.5:1.5B via Ollama in strict JSON format.
+        Sends prompt directly to local Qwen 3.5 (2B) via Ollama in strict JSON format.
         """
         clean_prompt = prompt.strip()
         if not clean_prompt:
@@ -430,7 +468,8 @@ Output Format: Return ONLY a valid JSON object matching the schema:
                 spoken_response="I am listening, sir. What can I do for you?",
                 actions=[],
                 raw_prompt="",
-                interpreted_intent="empty_prompt"
+                interpreted_intent="empty_prompt",
+                model_name=self.model_name
             )
 
         if self._check_ollama_health():
@@ -444,23 +483,33 @@ Output Format: Return ONLY a valid JSON object matching the schema:
                             {"role": "user", "content": clean_prompt}
                         ],
                         "stream": False,
-                        "format": "json",
-                        "options": {
-                            "temperature": 0.1,
-                            "top_p": 0.9,
-                            "num_predict": 512
-                        }
+                        "format": "json"
                     },
-                    timeout=25.0
+                    timeout=60.0
                 )
                 if resp.status_code == 200:
-                    raw_content = resp.json().get("message", {}).get("content", "").strip()
+                    resp_json = resp.json()
+                    msg = resp_json.get("message", {})
+                    raw_content = msg.get("content", "").strip()
+                    thinking = msg.get("thinking", "").strip()
+                    if not raw_content and thinking:
+                        raw_content = thinking
+
                     cleaned_json_str = self._clean_llm_json(raw_content)
+                    if '{' not in cleaned_json_str and '{' in thinking:
+                        cleaned_json_str = self._clean_llm_json(thinking)
+
                     parsed_data = json.loads(cleaned_json_str)
 
                     parsed_data["raw_prompt"] = clean_prompt
                     if "interpreted_intent" not in parsed_data:
                         parsed_data["interpreted_intent"] = "agentic_action_plan"
+
+                    parsed_data["model_name"] = self.model_name
+                    parsed_data["prompt_eval_count"] = resp_json.get("prompt_eval_count")
+                    parsed_data["eval_count"] = resp_json.get("eval_count")
+                    eval_duration = resp_json.get("eval_duration")
+                    parsed_data["eval_duration_ms"] = (eval_duration / 1e6) if eval_duration else None
 
                     # Strict Pydantic v2 validation
                     plan = AssistantIntentResponse.model_validate(parsed_data)
@@ -473,7 +522,8 @@ Output Format: Return ONLY a valid JSON object matching the schema:
             spoken_response=f"I have received your command: '{clean_prompt}', sir.",
             actions=[],
             raw_prompt=clean_prompt,
-            interpreted_intent="offline_fallback"
+            interpreted_intent="offline_fallback",
+            model_name=self.model_name
         )
 
     # Alias for backward compatibility
@@ -481,13 +531,33 @@ Output Format: Return ONLY a valid JSON object matching the schema:
         return self.parse_command(prompt)
 
     def _clean_llm_json(self, raw_text: str) -> str:
-        """Extracts clean JSON substring from LLM response text."""
-        text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
-        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
-        if match:
-            text = match.group(1).strip()
+        """Extracts clean JSON substring from LLM response text without regular expressions."""
+        text = raw_text.strip()
+
+        # Remove think tags if any
+        while "<think>" in text and "</think>" in text:
+            start_idx = text.find("<think>")
+            end_idx = text.find("</think>") + len("</think>")
+            text = (text[:start_idx] + text[end_idx:]).strip()
+
+        # Remove markdown code blocks if any
+        if "```json" in text:
+            start = text.find("```json") + 7
+            end = text.find("```", start)
+            if end != -1:
+                text = text[start:end].strip()
+        elif "```" in text:
+            start = text.find("```") + 3
+            end = text.find("```", start)
+            if end != -1:
+                text = text[start:end].strip()
+
         first_brace = text.find('{')
         last_brace = text.rfind('}')
         if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-            text = text[first_brace:last_brace + 1]
-        return text
+            return text[first_brace:last_brace + 1]
+
+        # If no JSON braces found but text exists, wrap as conversational JSON
+        if text:
+            return json.dumps({"spoken_response": text, "actions": []})
+        return "{}"
