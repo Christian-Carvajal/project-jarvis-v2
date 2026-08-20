@@ -198,15 +198,20 @@ class JarvisVirtualAssistant:
             self.gui.after(0, lambda: self.gui.log_console(f"User Command: \"{prompt}\""))
             self.gui.after(0, lambda: self.gui.update_status(f"Reasoning ({self.ai.model_name})...", "#E040FB"))
 
-        # 1. Pure LLM Intent Extraction (Zero hardcoded regex)
-        intent: AssistantIntentResponse = self.ai.parse_command(prompt)
+        # 1. Live Hardware Telemetry Injection & Pure LLM Intent Extraction
+        live_summary = self.state_machine.get_summary_text()
+        intent: AssistantIntentResponse = self.ai.parse_command(prompt, live_state=live_summary)
         latency_ms = (time.time() - start_time) * 1000
 
         print(f"[INTENT IDENTIFIED]: {intent.interpreted_intent}")
+        if intent.reasoning:
+            print(f"[CHAIN-OF-THOUGHT REASONING]: {intent.reasoning}")
         print(f"[ACTIONS PLANNED]: {len(intent.actions)} action(s)")
 
         if hasattr(self, 'gui') and self.gui:
             self.gui.after(0, lambda: self.gui.update_latency(latency_ms))
+            if intent.reasoning:
+                self.gui.after(0, lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
             self.gui.after(0, lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
 
         # 2. Dispatch Actions

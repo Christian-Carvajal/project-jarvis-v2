@@ -275,6 +275,7 @@ class SmartHomeStateMachine:
 
     def __init__(self, log_filepath: str = "assistant_execution.log"):
         self.log_filepath = log_filepath
+        self.last_queried_device: str = "bedroom_light"
         self.devices: Dict[str, SmartDevice] = {
             "living_room_light": SmartLight("living_room_light", "Living Room Light", "living_room", brightness=0),
             "kitchen_light": SmartLight("kitchen_light", "Kitchen Light", "kitchen", brightness=0),
@@ -286,6 +287,105 @@ class SmartHomeStateMachine:
             "ceiling_fan": SmartFan("ceiling_fan", "Ceiling Fan", "living_room"),
             "window_blinds": SmartBlinds("window_blinds", "Window Blinds", "living_room")
         }
+
+    def get_summary_text(self) -> str:
+        """Returns a concise text summary of all device states for LLM context and status queries."""
+        items = []
+        for d_id, dev in self.devices.items():
+            state = dev.get_state()
+            items.append(f"{dev.name}: {state.get('status_text', 'UNKNOWN')}")
+        return ", ".join(items)
+
+    def query_device_status(self, query: str) -> Optional[str]:
+        """
+        Directly queries and returns natural spoken status of a requested smart home device.
+        Handles queries like 'is the bedroom light on', 'is the front door locked', etc.
+        """
+        q = query.lower().strip()
+        is_query_intent = any(k in q for k in [
+            "is the", "is it", "are the", "are any", "status", "check", "tell me if",
+            "what is", "how is", "open or", "on or", "locked or", "closed or", "open on", "?"
+        ]) or q.startswith("is ") or q.startswith("are ") or q.startswith("what ")
+
+        if not is_query_intent and not any(k in q for k in ["status", "telemetry", "state"]):
+            return None
+
+        # 1. Specific Room Lights
+        if "bedroom" in q:
+            self.last_queried_device = "bedroom_light"
+            dev = self.devices["bedroom_light"]
+            return f"The bedroom light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        if "kitchen" in q:
+            self.last_queried_device = "kitchen_light"
+            dev = self.devices["kitchen_light"]
+            return f"The kitchen light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        if "living room" in q or "livingroom" in q:
+            self.last_queried_device = "living_room_light"
+            dev = self.devices["living_room_light"]
+            return f"The living room light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        # 2. General / All Lights
+        if "light" in q or "lights" in q:
+            on_lights = [d.name for d in self.devices.values() if isinstance(d, SmartLight) and d.is_on]
+            if on_lights:
+                return f"Currently, {', '.join(on_lights)} {'is' if len(on_lights)==1 else 'are'} on, sir."
+            return "All smart lights in the house are currently powered off, sir."
+
+        # 3. Thermostat / Temperature / Climate
+        if any(w in q for w in ["thermostat", "temp", "temperature", "climate", "ac", "degrees"]):
+            self.last_queried_device = "thermostat"
+            dev = self.devices["thermostat"]
+            return f"The thermostat is currently set to {dev.target_temp:.1f}°C in {dev.mode} mode, with an ambient temperature of {dev.ambient_temp:.1f}°C."
+
+        # 4. Front Door Lock
+        if any(w in q for w in ["door", "front door", "deadbolt", "lock"]):
+            self.last_queried_device = "front_door_lock"
+            dev = self.devices["front_door_lock"]
+            return f"The front door is currently {'locked and secured' if dev.is_locked else 'unlocked'}, sir."
+
+        # 5. Security Alarm
+        if any(w in q for w in ["alarm", "security", "perimeter", "defense"]):
+            self.last_queried_device = "security_alarm"
+            dev = self.devices["security_alarm"]
+            return f"The security alarm system is currently {dev.mode.lower()}, sir."
+
+        # 6. Ceiling Fan
+        if any(w in q for w in ["fan", "ceiling fan"]):
+            self.last_queried_device = "ceiling_fan"
+            dev = self.devices["ceiling_fan"]
+            return f"The ceiling fan is currently {dev.speed.lower()}, sir."
+
+        # 7. Window Blinds
+        if any(w in q for w in ["blind", "blinds", "window", "curtain"]):
+            self.last_queried_device = "window_blinds"
+            dev = self.devices["window_blinds"]
+            return f"The window blinds are currently {'open at ' + str(dev.position) + '%' if dev.position > 0 else 'closed'}, sir."
+
+        # 8. Entertainment Unit
+        if any(w in q for w in ["entertainment", "tv", "display", "theater"]):
+            self.last_queried_device = "entertainment_unit"
+            dev = self.devices["entertainment_unit"]
+            return f"The entertainment unit is currently {'active' if dev.is_active else 'powered off'}, sir."
+
+        # 9. Contextual pronoun follow-up ('is it open', 'is it on or off', 'is it open or not')
+        if any(w in q for w in ["is it", "it is", "open or not", "on or off", "locked or"]):
+            dev = self.devices.get(self.last_queried_device, self.devices["bedroom_light"])
+            if isinstance(dev, SmartLight):
+                return f"The {dev.name.lower()} is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+            elif isinstance(dev, SmartLock):
+                return f"The {dev.name.lower()} is currently {'locked and secured' if dev.is_locked else 'unlocked'}, sir."
+            elif isinstance(dev, SmartBlinds):
+                return f"The {dev.name.lower()} are currently {'open at ' + str(dev.position) + '%' if dev.position > 0 else 'closed'}, sir."
+            elif isinstance(dev, SmartThermostat):
+                return f"The thermostat is currently set to {dev.target_temp:.1f}°C in {dev.mode} mode, with an ambient temperature of {dev.ambient_temp:.1f}°C."
+
+        # 10. General House Overview / Status
+        if any(w in q for w in ["house status", "home status", "telemetry", "everything", "overview", "what is on"]):
+            return f"Smart home status overview: {self.get_summary_text()}."
+
+        return None
 
     def apply_action(self, target_or_dict: Any, action: Optional[str] = None, value: Any = None) -> str:
         """Applies an action to matching devices via dictionary or positional arguments."""
@@ -304,24 +404,44 @@ class SmartHomeStateMachine:
         act = str(action_dict.get("action", "")).lower().strip()
         val = action_dict.get("value")
 
+        t_clean = raw_target.replace(" ", "_").replace("-", "_")
+
         targets_to_modify = []
-        if raw_target in ["all_lights", "lights", "house_lights", "all"]:
+        if t_clean in ["all_lights", "lights", "house_lights", "all", "all_light"]:
             targets_to_modify = [d for d in self.devices.values() if isinstance(d, SmartLight)]
-        elif raw_target in self.devices:
-            targets_to_modify = [self.devices[raw_target]]
+        elif t_clean in self.devices:
+            targets_to_modify = [self.devices[t_clean]]
+        elif "kitchen" in t_clean:
+            targets_to_modify = [self.devices["kitchen_light"]]
+        elif "bedroom" in t_clean:
+            targets_to_modify = [self.devices["bedroom_light"]]
+        elif "living" in t_clean:
+            targets_to_modify = [self.devices["living_room_light"]]
+        elif any(k in t_clean for k in ["thermostat", "temp", "climate", "ac", "degrees"]):
+            targets_to_modify = [self.devices["thermostat"]]
+        elif any(k in t_clean for k in ["door", "lock", "front_door", "deadbolt"]):
+            targets_to_modify = [self.devices["front_door_lock"]]
+        elif any(k in t_clean for k in ["alarm", "security", "perimeter"]):
+            targets_to_modify = [self.devices["security_alarm"]]
+        elif any(k in t_clean for k in ["fan", "ceiling"]):
+            targets_to_modify = [self.devices["ceiling_fan"]]
+        elif any(k in t_clean for k in ["blind", "blinds", "window", "curtain"]):
+            targets_to_modify = [self.devices["window_blinds"]]
+        elif any(k in t_clean for k in ["entertainment", "tv", "display", "theater"]):
+            targets_to_modify = [self.devices["entertainment_unit"]]
         else:
             for d_id, dev in self.devices.items():
-                if d_id in raw_target or raw_target in d_id:
+                if d_id in t_clean or t_clean in d_id:
                     targets_to_modify.append(dev)
 
         if not targets_to_modify:
-            if "light" in raw_target:
+            if "light" in t_clean:
                 targets_to_modify = [self.devices["living_room_light"]]
-            elif "temp" in raw_target or "thermostat" in raw_target or "climate" in raw_target:
+            elif "temp" in t_clean or "thermostat" in t_clean:
                 targets_to_modify = [self.devices["thermostat"]]
-            elif "door" in raw_target or "lock" in raw_target:
+            elif "door" in t_clean or "lock" in t_clean:
                 targets_to_modify = [self.devices["front_door_lock"]]
-            elif "alarm" in raw_target or "security" in raw_target:
+            elif "alarm" in t_clean or "security" in t_clean:
                 targets_to_modify = [self.devices["security_alarm"]]
 
         transitions = []
