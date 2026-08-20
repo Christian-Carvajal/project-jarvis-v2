@@ -10,6 +10,25 @@ Features:
 
 import os
 import sys
+import warnings
+
+# Suppress HuggingFace Hub unauthenticated / symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+warnings.filterwarnings("ignore", message=".*cache-system uses symlinks.*")
+
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 import time
 import json
 import logging
@@ -49,7 +68,7 @@ class JarvisVirtualAssistant:
 
     def __init__(self):
         print("================================================================")
-        print("  ⚡ PROJECT JARVIS — 2-TURN AGENTIC AI WORKSTATION (Qwen 3.5:2B)")
+        print("  [+] PROJECT JARVIS - 2-TURN AGENTIC AI WORKSTATION (jarvis-trained-model)")
         print("  100% Offline | Pure Agentic Local LLM | British JARVIS Voice")
         print("================================================================")
 

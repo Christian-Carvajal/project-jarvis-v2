@@ -133,9 +133,12 @@ class PCAutomationEngine:
         "vs code": "Code.exe",
         "discord": "Discord.exe",
         "steam": "steam.exe",
+        "task_manager": "taskmgr.exe",
         "task manager": "taskmgr.exe",
+        "taskmgr": "taskmgr.exe",
         "explorer": "explorer.exe",
-        "file explorer": "explorer.exe"
+        "file explorer": "explorer.exe",
+        "file_explorer": "explorer.exe"
     }
 
     WEB_FALLBACKS = {
@@ -379,14 +382,31 @@ class PCAutomationEngine:
             _, msg = cls.close_app(target_clean)
             return f"PC Action: {msg}"
 
-        # 2. Web Search
+        # 2. Play Music / Spotify Playback
+        if act_clean == "play_music" or (target_clean == "spotify" and act_clean in ["play", "stream", "listen"]):
+            if value:
+                q = urllib.parse.quote(str(value))
+                try:
+                    os.system(f"start spotify:search:{q}")
+                except Exception:
+                    webbrowser.open(f"https://open.spotify.com/search/{q}")
+                return f"PC Action: Playing '{value}' on Spotify"
+            else:
+                if WIN32_AVAILABLE:
+                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                elif PYAUTOGUI_AVAILABLE:
+                    pyautogui.press('playpause')
+                return "PC Action: Resumed playback on Spotify"
+
+        # 3. Web Search & Navigation
         if act_clean == "web_search" or "search" in target_clean:
             query = str(value or target_clean.replace("search", "")).strip()
             url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
             webbrowser.open_new(url)
             return f"PC Action: Searched Google for '{query}'"
 
-        # 3. YouTube
+        # 4. YouTube Website / Search
         if "youtube" in target_clean or act_clean == "youtube":
             if value:
                 query_str = urllib.parse.quote(str(value))
@@ -396,8 +416,34 @@ class PCAutomationEngine:
             webbrowser.open_new(url)
             return f"PC Action: Opened YouTube ({value if value else 'Home'})"
 
-        # 4. Spotify
-        if "spotify" in target_clean or act_clean == "spotify":
+        # 5. Open Website (Chrome, GitHub, Canvas, etc.)
+        if act_clean == "open_website" or target_clean in ["github", "google", "canvas"]:
+            if target_clean in ["chrome", "google"]:
+                if value:
+                    if str(value).startswith("http"):
+                        url = str(value)
+                    else:
+                        url = f"https://www.google.com/search?q={urllib.parse.quote(str(value))}"
+                    webbrowser.open_new(url)
+                    return f"PC Action: Searched Google for '{value}'"
+                else:
+                    _, msg = cls.launch_app("chrome")
+                    return f"PC Action: {msg}"
+            elif target_clean == "github":
+                url = "https://github.com" if not value else str(value)
+                webbrowser.open_new(url)
+                return f"PC Action: Opened GitHub ({url})"
+            elif target_clean in cls.WEB_FALLBACKS:
+                url = cls.WEB_FALLBACKS[target_clean]
+            elif value and str(value).startswith("http"):
+                url = str(value)
+            else:
+                url = f"https://www.{target_clean}.com" if not target_clean.startswith("http") else target_clean
+            webbrowser.open_new(url)
+            return f"PC Action: Opened website '{url}'"
+
+        # 6. Spotify Bare Launch
+        if target_clean == "spotify":
             if value:
                 q = urllib.parse.quote(str(value))
                 try:
@@ -409,9 +455,26 @@ class PCAutomationEngine:
                 _, msg = cls.launch_app("spotify")
                 return f"PC Action: {msg}"
 
-        # 5. Media & Volume Controls
-        if act_clean in ["media_control", "volume", "media"] or any(k in target_clean for k in ["volume", "mute", "pause", "play", "skip"]):
-            if "up" in target_clean or "louder" in target_clean or (value and "up" in str(value)):
+        # 7. Media & Volume Controls
+        if act_clean in ["media_control", "volume", "media"] or any(k in target_clean for k in ["volume", "mute", "pause", "play", "skip", "next", "prev"]):
+            val_str = str(value or "").lower()
+            if "next" in val_str or "next" in target_clean or "skip" in target_clean:
+                if WIN32_AVAILABLE:
+                    win32api.keybd_event(win32con.VK_MEDIA_NEXT_TRACK, 0, 0, 0)
+                    win32api.keybd_event(win32con.VK_MEDIA_NEXT_TRACK, 0, win32con.KEYEVENTF_KEYUP, 0)
+                elif PYAUTOGUI_AVAILABLE:
+                    pyautogui.press('nexttrack')
+                return "PC Action: Skipped to next track"
+
+            elif "prev" in val_str or "previous" in val_str or "prev" in target_clean:
+                if WIN32_AVAILABLE:
+                    win32api.keybd_event(win32con.VK_MEDIA_PREV_TRACK, 0, 0, 0)
+                    win32api.keybd_event(win32con.VK_MEDIA_PREV_TRACK, 0, win32con.KEYEVENTF_KEYUP, 0)
+                elif PYAUTOGUI_AVAILABLE:
+                    pyautogui.press('prevtrack')
+                return "PC Action: Returned to previous track"
+
+            elif "up" in target_clean or "louder" in target_clean or "up" in val_str or "volume_up" in val_str:
                 if WIN32_AVAILABLE:
                     for _ in range(5):
                         win32api.keybd_event(win32con.VK_VOLUME_UP, 0, 0, 0)
@@ -420,7 +483,7 @@ class PCAutomationEngine:
                     for _ in range(5): pyautogui.press('volumeup')
                 return "PC Action: Increased system volume"
 
-            elif "down" in target_clean or "quieter" in target_clean or (value and "down" in str(value)):
+            elif "down" in target_clean or "quieter" in target_clean or "down" in val_str or "volume_down" in val_str:
                 if WIN32_AVAILABLE:
                     for _ in range(5):
                         win32api.keybd_event(win32con.VK_VOLUME_DOWN, 0, 0, 0)
@@ -429,7 +492,7 @@ class PCAutomationEngine:
                     for _ in range(5): pyautogui.press('volumedown')
                 return "PC Action: Decreased system volume"
 
-            elif "mute" in target_clean:
+            elif "mute" in target_clean or "mute" in val_str:
                 if WIN32_AVAILABLE:
                     win32api.keybd_event(win32con.VK_VOLUME_MUTE, 0, 0, 0)
                     win32api.keybd_event(win32con.VK_VOLUME_MUTE, 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -437,20 +500,22 @@ class PCAutomationEngine:
                     pyautogui.press('volumemute')
                 return "PC Action: Toggled volume mute"
 
-            elif any(k in target_clean for k in ["pause", "play", "resume"]):
+            elif any(k in target_clean for k in ["pause", "play", "resume"]) or any(k in val_str for k in ["pause", "play", "resume"]):
                 if WIN32_AVAILABLE:
                     win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
                     win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
                 elif PYAUTOGUI_AVAILABLE:
                     pyautogui.press('playpause')
-                return "PC Action: Toggled media playback"
+                return f"PC Action: Toggled media playback ({value if value else 'Play/Pause'})"
 
-        # 6. System Controls
-        if act_clean in ["system_control", "lock_pc", "open_task_manager", "open_explorer"] or target_clean in ["lock_pc", "lock", "task_manager", "open_task_manager", "file_explorer", "open_explorer", "screenshot"]:
+        # 8. System Controls
+        if act_clean in ["system_control", "lock_pc", "open_task_manager", "open_explorer"] or target_clean in ["lock_pc", "lock", "task_manager", "open_task_manager", "file_explorer", "open_explorer", "screenshot", "system"]:
             if target_clean in ["lock_pc", "lock"] or act_clean == "lock_pc":
                 if sys.platform == "win32":
                     subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=True)
                 return "PC Action: Workstation locked"
+            elif target_clean == "system" and str(value).lower() in ["status", "telemetry"]:
+                return "PC Action: System status nominal (Workstation online, local AI active)"
             elif target_clean in ["task_manager", "open_task_manager", "taskmgr"] or act_clean == "open_task_manager":
                 subprocess.Popen(["taskmgr.exe"], shell=True)
                 return "PC Action: Launched Task Manager"
@@ -462,68 +527,26 @@ class PCAutomationEngine:
                     pyautogui.screenshot("screenshot.png")
                     return "PC Action: Captured screen to screenshot.png"
 
-        # 7. Open Website
-        if act_clean == "open_website" or target_clean in ["github", "google", "canvas"]:
-            if target_clean in cls.WEB_FALLBACKS:
-                url = cls.WEB_FALLBACKS[target_clean]
-            elif value and str(value).startswith("http"):
-                url = str(value)
-            else:
-                url = f"https://www.{target_clean}.com" if not target_clean.startswith("http") else target_clean
-            webbrowser.open_new(url)
-            return f"PC Action: Opened website '{url}'"
-
-        # 8. Dynamic Native Application Launcher
+        # 9. Dynamic Native Application Launcher
         _, msg = cls.launch_app(target_clean)
         return f"PC Action: {msg}"
 
 
 class AIEngine:
     """
-    Pure Agentic Local AI Engine interfacing directly with Ollama (qwen3.5:2b / qwen2.5:1.5b).
+    Pure Agentic Local AI Engine interfacing directly with Ollama (jarvis-trained-model).
     Extracts structured intent, dispatches smart home and PC automation actions, with intelligent resilience.
     """
 
-    SYSTEM_PROMPT = """You are JARVIS, an autonomous AI smart-home and desktop workstation assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo for Apex Home Automations.
-Do NOT output <think> tags. Always extract concrete actions and return ONLY a valid JSON object matching the exact schema:
-{
-  "spoken_response": "<Natural, concise spoken confirmation for the user>",
-  "actions": [
-    {
-      "domain": "smart_home" | "pc_automation",
-      "device_or_target": "<target_identifier>",
-      "action": "<action_identifier>",
-      "value": <numeric_value | string_parameter | null>
-    }
-  ]
-}
-
-Available Target Devices & Actions:
-- Smart Home (domain: "smart_home"):
-  * living_room_light, kitchen_light, bedroom_light: actions [turn_on, turn_off, set_brightness]
-  * thermostat: action [set_temperature] (value: float in °C, e.g. 24.0)
-  * front_door_lock: actions [lock, unlock]
-  * entertainment_unit: actions [turn_on, turn_off]
-  * security_alarm: actions [arm, disarm]
-  * ceiling_fan: actions [turn_on, turn_off, set_speed] (value: "low", "medium", "high")
-  * window_blinds: actions [open, close]
-- PC Desktop Automation (domain: "pc_automation"):
-  * open_app: targets [spotify, notepad, calculator, code, brave, chrome, edge, terminal, paint, task_manager, explorer]
-  * open_website: targets [youtube, spotify, github, google, canvas] (value: search query or URL)
-  * media_control: targets [volume, spotify, media] (value: "up", "down", "mute", or song name)
-  * system_control: targets [lock_pc, open_task_manager, open_explorer, screenshot]
-
-Key Action Rules:
-- "Goodnight" / "bed time" / "going to sleep": turn off bedroom_light, turn off living_room_light, and lock front_door_lock.
-- "Freezing" / "cold" / "dark": set thermostat temperature to 24.0 and turn on living_room_light.
-- "Movie night" / "movie mode": turn on entertainment_unit and turn on living_room_light.
-- "Leaving" / "heading out": lock front_door_lock and lock lock_pc.
-- "Open Spotify" / "Play Spotify": domain "pc_automation", device_or_target "spotify", action "open_app".
-- "Play <song> on Spotify": domain "pc_automation", device_or_target "spotify", action "media_control", value "<song>".
-- "Open YouTube and search for <query>": domain "pc_automation", device_or_target "youtube", action "open_website", value "<query>".
-- "Open <app> and turn on <light>": compound action plan containing both PC action and smart home action.
-- Chit-chat / Greetings / Identity questions: return spoken_response describing yourself and empty actions: [].
-"""
+    SYSTEM_PROMPT = (
+        "You are JARVIS, an autonomous AI smart home and desktop assistant created by "
+        "Christian Ezekiel Carvajal and John Miko Sarsalijo. "
+        "Parse the user request into structured JSON actions. "
+        "STRICT ANTI-HALLUCINATION RULE: Never invent, guess, or hallucinate search queries, "
+        "song names, artists, or parameters not explicitly stated by the user. "
+        "If the user only asks to open or launch an application or website without specifying a query, "
+        "set 'value' to null."
+    )
 
     def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
         self.base_url = base_url.rstrip("/")

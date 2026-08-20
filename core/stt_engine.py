@@ -1,6 +1,26 @@
+import os
+import sys
+import warnings
+
+# Suppress HuggingFace Hub unauthenticated / symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+warnings.filterwarnings("ignore", message=".*cache-system uses symlinks.*")
+
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 import asyncio
 import tempfile
-import os
 import re
 import numpy as np
 import speech_recognition as sr
@@ -163,16 +183,16 @@ class STTEngine:
                 # Warm-up inference to verify cuBLAS loads cleanly
                 dummy = np.zeros(8000, dtype=np.float32)
                 list(model.transcribe(dummy)[0])
-                print("[STT Engine]: ✅ GPU acceleration active!")
+                print("[STT Engine]: [+] GPU acceleration active!")
                 return model
             except Exception as err:
-                print(f"[STT Engine]: CUDA init failed ({err}) — falling back to CPU int8.")
+                print(f"[STT Engine]: CUDA init failed ({err}) - falling back to CPU int8.")
 
         # CPU int8 fallback
         try:
             print(f"[STT Engine]: Initialising Whisper '{self.model_size}' on CPU (int8)...")
             model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
-            print("[STT Engine]: ✅ CPU int8 Whisper model ready.")
+            print("[STT Engine]: [+] CPU int8 Whisper model ready.")
             return model
         except Exception as ex:
             print(f"[STT Error: Whisper init deferred ({ex}).]")
