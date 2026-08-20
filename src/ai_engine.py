@@ -69,6 +69,12 @@ class DeviceAction(BaseModel):
                 domain = "smart_home"
 
         target_norm = target.replace(" ", "_").replace("-", "_")
+
+        # Automatically route climate and temperature entities to smart_home thermostat
+        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or act in ["set_temperature", "warm", "cool"]:
+            domain = "smart_home"
+            target = "thermostat"
+
         if domain == "smart_home":
             if "kitchen" in target_norm:
                 target = "kitchen_light"
@@ -76,7 +82,7 @@ class DeviceAction(BaseModel):
                 target = "bedroom_light"
             elif "living" in target_norm:
                 target = "living_room_light"
-            elif any(k in target_norm for k in ["thermostat", "temp", "climate", "ac"]):
+            elif any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]):
                 target = "thermostat"
             elif any(k in target_norm for k in ["door", "lock", "front_door"]):
                 target = "front_door_lock"
@@ -364,19 +370,12 @@ class PCAutomationEngine:
                 except Exception:
                     pass
 
-        # Windows Protocol launch attempt
-        try:
-            os.system(f"start {clean}:")
-            return True, f"Launched '{clean.capitalize()}'."
-        except Exception:
-            pass
-
         if clean in cls.WEB_FALLBACKS:
             url = cls.WEB_FALLBACKS[clean]
             webbrowser.open(url)
             return True, f"Launched '{clean.capitalize()}' Web Fallback ({url})."
 
-        return False, f"Could not locate '{clean}' on system."
+        return False, f"Application '{clean}' is not registered on this system."
 
     @classmethod
     def close_app(cls, app_name: str) -> Tuple[bool, str]:

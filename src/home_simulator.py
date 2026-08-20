@@ -90,11 +90,21 @@ class SmartThermostat(SmartDevice):
         self.mode = mode
 
     def set_temperature(self, temp: float):
-        # Support extended temperature range (10.0°C to 60.0°C)
-        self.target_temp = max(10.0, min(60.0, float(temp)))
-        if self.target_temp > self.ambient_temp + 1.0:
+        t_val = float(temp)
+        # If model outputs Fahrenheit comfort values (65°F to 89°F), convert to integer Celsius (18°C to 30°C)
+        if 65.0 <= t_val <= 89.0:
+            c_conv = (t_val - 32.0) * 5.0 / 9.0
+            t_val = round(c_conv)
+            if 70.0 <= float(temp) <= 75.0 and t_val <= int(self.ambient_temp):
+                t_val = int(self.ambient_temp) + 2  # Boost to comfortable heating (e.g. 24°C)
+        else:
+            t_val = round(t_val)
+
+        # Support extended temperature safety range (10°C to 60°C) with pure whole integer display (no decimals)
+        self.target_temp = float(max(10, min(60, int(t_val))))
+        if self.target_temp > self.ambient_temp + 0.5:
             self.mode = "HEAT"
-        elif self.target_temp < self.ambient_temp - 1.0:
+        elif self.target_temp < self.ambient_temp - 0.5:
             self.mode = "COOL"
         else:
             self.mode = "AUTO"
@@ -112,10 +122,10 @@ class SmartThermostat(SmartDevice):
             "device_id": self.device_id,
             "name": self.name,
             "room": self.room,
-            "target_temp": self.target_temp,
-            "ambient_temp": self.ambient_temp,
+            "target_temp": int(round(self.target_temp)),
+            "ambient_temp": int(round(self.ambient_temp)),
             "mode": self.mode,
-            "status_text": f"{self.target_temp:.1f}°C"
+            "status_text": f"{int(round(self.target_temp))}°C"
         }
 
 
@@ -479,17 +489,17 @@ class SmartHomeStateMachine:
                 transitions.append(f"{dev.name}: {old} -> {'ON (' + str(dev.brightness) + '%)' if dev.is_on else 'OFF'}")
 
             elif isinstance(dev, SmartThermostat):
-                old = f"{dev.target_temp:.1f}°C ({dev.mode})"
+                old = f"{int(round(dev.target_temp))}°C ({dev.mode})"
                 if val is not None:
                     try:
                         dev.set_temperature(float(val))
                     except Exception:
                         dev.set_temperature(24.0)
-                elif any(k in act for k in ["warm", "heat", "increase", "raise", "up"]):
+                elif any(k in act for k in ["warm", "heat", "increase", "raise", "up", "turn_on", "on"]):
                     dev.set_temperature(dev.target_temp + 2.0)
-                elif any(k in act for k in ["cool", "decrease", "lower", "drop", "down"]):
+                elif any(k in act for k in ["cool", "decrease", "lower", "drop", "down", "turn_off", "off"]):
                     dev.set_temperature(dev.target_temp - 2.0)
-                transitions.append(f"{dev.name}: {old} -> {dev.target_temp:.1f}°C ({dev.mode})")
+                transitions.append(f"{dev.name}: {old} -> {int(round(dev.target_temp))}°C ({dev.mode})")
 
             elif isinstance(dev, SmartLock):
                 old = "LOCKED" if dev.is_locked else "UNLOCKED"
@@ -523,10 +533,16 @@ class SmartHomeStateMachine:
 
             elif isinstance(dev, SmartFan):
                 old = dev.speed
-                if any(k in act for k in ["off", "stop", "deactivate", "disable", "shut"]):
+                is_fan_off = (
+                    any(k in act for k in ["off", "stop", "deactivate", "disable", "shut"])
+                    or val in [0, "0", "0%", "off", "OFF", 0.0]
+                    or (str(val).isdigit() and int(val) == 0)
+                )
+                if is_fan_off:
                     dev.turn_off()
                 elif any(k in act for k in ["on", "start", "activate", "speed", "set"]):
-                    dev.set_speed(str(val) if val else "HIGH")
+                    spd = str(val).upper() if val and str(val).upper() in ["LOW", "MEDIUM", "HIGH"] else "HIGH"
+                    dev.set_speed(spd)
                 else:
                     dev.set_speed("HIGH")
                 transitions.append(f"{dev.name}: {old} -> {dev.speed}")
@@ -1479,8 +1495,8 @@ class ModernHomeDashboard(tk.Tk):
 
             elif isinstance(dev, SmartThermostat):
                 temp_color = self.THEME["accent_amber"] if dev.mode == "HEAT" else (self.THEME["accent_cyan"] if dev.mode == "COOL" else self.THEME["accent_green"])
-                widgets["status_lbl"].config(text=f"{dev.target_temp:.1f}°C", fg=temp_color)
-                widgets["detail_lbl"].config(text=f"Ambient: {dev.ambient_temp:.1f}°C | Mode: {dev.mode}")
+                widgets["status_lbl"].config(text=f"{int(round(dev.target_temp))}°C", fg=temp_color)
+                widgets["detail_lbl"].config(text=f"Ambient: {int(round(dev.ambient_temp))}°C | Mode: {dev.mode}")
                 widgets["card"].config(bg=self.THEME["card_active"] if dev.mode != "AUTO" else self.THEME["card_bg"])
 
             elif isinstance(dev, SmartLock):
