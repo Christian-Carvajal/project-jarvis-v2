@@ -91,6 +91,11 @@ class DeviceAction(BaseModel):
             elif target_norm:
                 target = target_norm
 
+            if any(k in act for k in ["off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken"]):
+                act = "turn_off"
+            elif any(k in act for k in ["on", "activate", "enable", "illuminate"]):
+                act = "turn_on"
+
         values["domain"] = domain
         values["device_or_target"] = target if target else ("browser" if domain == "pc_automation" else "living_room_light")
         values["action"] = act

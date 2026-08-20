@@ -240,8 +240,8 @@ class SmartBlinds(SmartDevice):
         super().__init__(device_id, name, room)
         self.position = 100
 
-    def open(self):
-        self.position = 100
+    def open(self, position: int = 100):
+        self.position = max(0, min(100, position))
         self.last_updated = datetime.now()
 
     def close(self):
@@ -448,14 +448,33 @@ class SmartHomeStateMachine:
         for dev in targets_to_modify:
             if isinstance(dev, SmartLight):
                 old = f"ON ({dev.brightness}%)" if dev.is_on else "OFF"
-                if act in ["turn_on", "on", "activate"]:
-                    dev.turn_on(brightness=int(val) if val and str(val).isdigit() else 100)
-                elif act in ["turn_off", "off", "deactivate"]:
+                is_turn_off = (
+                    any(k in act for k in ["off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken"])
+                    or (val is not None and (val == 0 or str(val) == "0" or str(val).lower() in ["off", "0%"]))
+                )
+                is_turn_on = any(k in act for k in ["on", "activate", "enable", "illuminate", "light"])
+                is_brightness = any(k in act for k in ["brightness", "dim", "brighten", "level", "set"])
+
+                if is_turn_off:
                     dev.turn_off()
-                elif act in ["set_brightness", "dim", "brighten"] and val is not None:
+                elif is_turn_on:
+                    b_val = 100
+                    if val is not None and str(val).isdigit():
+                        b_val = int(val)
+                    dev.turn_on(brightness=b_val)
+                elif is_brightness and val is not None:
                     try:
-                        dev.set_brightness(int(val))
+                        b_int = int(val)
+                        if b_int <= 0:
+                            dev.turn_off()
+                        else:
+                            dev.set_brightness(b_int)
                     except Exception:
+                        dev.turn_on(100)
+                else:
+                    if "toggle" in act:
+                        dev.toggle()
+                    else:
                         dev.turn_on(100)
                 transitions.append(f"{dev.name}: {old} -> {'ON (' + str(dev.brightness) + '%)' if dev.is_on else 'OFF'}")
 
@@ -466,52 +485,64 @@ class SmartHomeStateMachine:
                         dev.set_temperature(float(val))
                     except Exception:
                         dev.set_temperature(24.0)
-                elif "warm" in act or "heat" in act or "increase" in act:
+                elif any(k in act for k in ["warm", "heat", "increase", "raise", "up"]):
                     dev.set_temperature(dev.target_temp + 2.0)
-                elif "cool" in act or "decrease" in act:
+                elif any(k in act for k in ["cool", "decrease", "lower", "drop", "down"]):
                     dev.set_temperature(dev.target_temp - 2.0)
                 transitions.append(f"{dev.name}: {old} -> {dev.target_temp:.1f}°C ({dev.mode})")
 
             elif isinstance(dev, SmartLock):
                 old = "LOCKED" if dev.is_locked else "UNLOCKED"
-                if act in ["lock", "close"]:
+                if any(k in act for k in ["unlock", "open", "unsecure", "disengage"]):
+                    dev.unlock()
+                elif any(k in act for k in ["lock", "secure", "close", "engage"]):
                     dev.lock()
                 else:
-                    dev.unlock()
+                    dev.lock()
                 transitions.append(f"{dev.name}: {old} -> {'LOCKED' if dev.is_locked else 'UNLOCKED'}")
 
             elif isinstance(dev, EntertainmentUnit):
                 old = "ACTIVE" if dev.is_active else "OFF"
-                if act in ["turn_on", "play"]:
-                    dev.turn_on()
-                else:
+                if any(k in act for k in ["off", "stop", "deactivate", "standby", "close", "shut"]):
                     dev.turn_off()
+                elif any(k in act for k in ["on", "start", "activate", "play", "open", "launch"]):
+                    dev.turn_on(app=str(val) if val else "YouTube")
+                else:
+                    dev.turn_on()
                 transitions.append(f"{dev.name}: {old} -> {'ACTIVE' if dev.is_active else 'OFF'}")
 
             elif isinstance(dev, SecurityAlarm):
                 old = dev.mode
-                if act == "disarm":
+                if any(k in act for k in ["disarm", "off", "deactivate", "disable", "stop"]):
                     dev.disarm()
+                elif any(k in act for k in ["arm", "on", "activate", "enable"]):
+                    dev.arm(str(val) if val else "ARMED_AWAY")
                 else:
-                    dev.arm(str(val) if val else "ARMED_NIGHT")
+                    dev.arm("ARMED_AWAY")
                 transitions.append(f"{dev.name}: {old} -> {dev.mode}")
 
             elif isinstance(dev, SmartFan):
                 old = dev.speed
-                if act == "turn_off":
+                if any(k in act for k in ["off", "stop", "deactivate", "disable", "shut"]):
                     dev.turn_off()
-                else:
+                elif any(k in act for k in ["on", "start", "activate", "speed", "set"]):
                     dev.set_speed(str(val) if val else "HIGH")
+                else:
+                    dev.set_speed("HIGH")
                 transitions.append(f"{dev.name}: {old} -> {dev.speed}")
 
             elif isinstance(dev, SmartBlinds):
                 old = f"{dev.position}%"
-                if act == "close":
+                if any(k in act for k in ["close", "shut", "down", "lower", "off", "turn_off", "deactivate"]) or val == 0:
                     dev.close()
-                elif act == "open":
-                    dev.open()
-                elif act == "set_position" and val is not None:
-                    dev.set_position(int(val))
+                elif any(k in act for k in ["open", "up", "raise", "on", "turn_on", "activate"]):
+                    pos = int(val) if val and str(val).isdigit() else 100
+                    dev.open(position=pos)
+                elif val is not None:
+                    try:
+                        dev.set_position(int(val))
+                    except Exception:
+                        dev.open()
                 transitions.append(f"{dev.name}: {old} -> {dev.position}%")
 
         return "; ".join(transitions) if transitions else f"No transition for {raw_target}"
