@@ -568,15 +568,8 @@ class AIEngine:
     """
 
     SYSTEM_PROMPT = (
-        "You are JARVIS, an autonomous AI smart home and desktop assistant created by "
-        "Christian Ezekiel Carvajal and John Miko Sarsalijo. "
-        "Reason step-by-step inside <think></think> tags before formulating your output. "
-        "Evaluate the live smart home hardware telemetry context against the user's intent. "
-        "If the user inquires about device status, evaluate the current telemetry context and report the accurate physical state in spoken_response with an empty actions array []. "
-        "If the user issues an operational command, parse the request into structured JSON actions matching the schema: "
-        "{\"spoken_response\": \"<natural response>\", \"actions\": [{\"domain\": \"smart_home\"|\"pc_automation\", \"device_or_target\": \"<target>\", \"action\": \"<action>\", \"value\": <value|null>}]}. "
-        "STRICT ANTI-HALLUCINATION RULE: Never invent search queries, song names, or parameters not explicitly stated by the user. "
-        "If the user only asks to open an application or website without specifying a query, set 'value' to null."
+        "You are JARVIS, an autonomous AI smart home and desktop assistant. "
+        "Parse the user request into structured JSON actions."
     )
 
     def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
@@ -641,7 +634,7 @@ class AIEngine:
     def parse_command(self, prompt: str, live_state: Optional[str] = None) -> AssistantIntentResponse:
         """
         Pure Agentic Intent Extraction:
-        Sends prompt directly to local LLM via Ollama in strict JSON format with 120s timeout,
+        Sends prompt directly to local fine-tuned model via Ollama in strict JSON format with 120s timeout,
         extracts Chain-of-Thought reasoning, and validates structured action plan with Pydantic v2.
         """
         clean_prompt = prompt.strip()
@@ -657,16 +650,12 @@ class AIEngine:
 
         if self._check_ollama_health():
             try:
-                sys_inst = self.SYSTEM_PROMPT
-                if live_state:
-                    sys_inst += f"\n[Live Smart Home Hardware Telemetry]: {live_state}"
-
                 resp = requests.post(
                     f"{self.base_url}/api/chat",
                     json={
                         "model": self.model_name,
                         "messages": [
-                            {"role": "system", "content": sys_inst},
+                            {"role": "system", "content": self.SYSTEM_PROMPT},
                             {"role": "user", "content": clean_prompt}
                         ],
                         "stream": False,
