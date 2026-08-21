@@ -402,6 +402,40 @@ class AssistantIntentResponse(BaseModel):
                 }
                 values["actions"] = [candidate_action]
 
+        # 1b. Action Deduplication & Redundancy Filtering (Prevents duplicate app/website launches)
+        cur_actions = values.get("actions")
+        if cur_actions and isinstance(cur_actions, list):
+            deduped = []
+            seen_signatures = set()
+            for act in cur_actions:
+                if isinstance(act, dict):
+                    dom = act.get("domain") or "pc_automation"
+                    tgt = str(act.get("device_or_target") or act.get("target") or act.get("device") or "").lower().strip()
+                    op = str(act.get("action") or act.get("act") or "").lower().strip()
+                    val = str(act.get("value") or "").strip()
+                elif hasattr(act, "device_or_target"):
+                    dom = act.domain
+                    tgt = str(act.device_or_target).lower().strip()
+                    op = str(act.action).lower().strip()
+                    val = str(act.value or "").strip()
+                else:
+                    dom, tgt, op, val = None, "", "", ""
+
+                sig = f"{dom}:{tgt}:{op}:{val}"
+                if sig in seen_signatures:
+                    continue
+
+                if dom == "pc_automation" and op in ["open_app", "open_website"]:
+                    if any("youtube" in s for s in seen_signatures) and ("youtube" in tgt or "youtube" in val or tgt in ["chrome", "edge", "browser"]):
+                        continue
+                    if any("spotify" in s for s in seen_signatures) and ("spotify" in tgt or "spotify" in val):
+                        continue
+
+                seen_signatures.add(sig)
+                deduped.append(act)
+
+            values["actions"] = deduped
+
         # 2. Contextual spoken response generation if missing or generic
         spoken = str(values.get("spoken_response") or "").strip()
         generic_defaults = [
@@ -462,6 +496,48 @@ class AssistantIntentResponse(BaseModel):
                 spoken = "I am at your service, sir. What can I do for you?"
 
             values["spoken_response"] = spoken
+
+        # Ensure spoken_response is a pure human-readable dialogue string without JSON keys
+        raw_spoken = values.get("spoken_response")
+        if raw_spoken is not None:
+            raw_s = str(raw_spoken).strip()
+            # If spoken_response was serialized JSON e.g. '{"spoken_response": "..."}'
+            for _ in range(5):
+                if raw_s.startswith("{") and raw_s.endswith("}"):
+                    try:
+                        inner_data = json.loads(raw_s)
+                        if isinstance(inner_data, dict):
+                            if "spoken_response" in inner_data:
+                                raw_s = str(inner_data["spoken_response"]).strip()
+                            elif "response" in inner_data:
+                                raw_s = str(inner_data["response"]).strip()
+                            elif "message" in inner_data:
+                                raw_s = str(inner_data["message"]).strip()
+                    except Exception:
+                        pass
+                else:
+                    break
+
+            # Strip any residual JSON keys, brackets or quotes repeatedly
+            for _ in range(10):
+                found = False
+                for token in [
+                    '"spoken_response":', "'spoken_response':", 'spoken_response":', "spoken_response':", 'spoken_response:',
+                    '"response":', "'response':", 'response":', "response':", 'response:',
+                    '"message":', "'message':", 'message":', "message':", 'message:',
+                    '"spoken_actions":', "'spoken_actions':", 'spoken_actions":', 'spoken_actions:',
+                    '"actions":', "'actions':", 'actions":', 'actions:'
+                ]:
+                    if token in raw_s:
+                        idx = raw_s.find(token) + len(token)
+                        raw_s = raw_s[idx:].strip(' \t\n\r"\'{},[]')
+                        found = True
+                if not found:
+                    break
+
+            # Clean any wrapping quotes or brackets
+            raw_s = raw_s.strip('{}[]"\' \t\n\r')
+            values["spoken_response"] = raw_s if raw_s else "Executing command, sir."
 
         if not values.get("interpreted_intent"):
             values["interpreted_intent"] = "agentic_action_plan"

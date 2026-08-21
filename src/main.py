@@ -215,13 +215,19 @@ class JarvisVirtualAssistant:
                 self.gui.after(0, lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
             self.gui.after(0, lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
 
-        # 2. Dispatch Actions
+        # 2. Dispatch Actions (Deduplicated Execution)
         state_transitions: List[str] = []
+        dispatched_sigs = set()
 
         for act in intent.actions:
             target = act.device_or_target
             action_name = act.action
             val = act.value
+
+            sig = f"{act.domain}:{target}:{action_name}:{val}"
+            if sig in dispatched_sigs:
+                continue
+            dispatched_sigs.add(sig)
 
             # Smart Home Domain
             if act.domain == "smart_home":
@@ -245,6 +251,42 @@ class JarvisVirtualAssistant:
 
         # 4. Spoken Response
         spoken = intent.spoken_response
+        if spoken:
+            spoken_clean = str(spoken).strip()
+            for _ in range(5):
+                if spoken_clean.startswith("{") and spoken_clean.endswith("}"):
+                    try:
+                        data = json.loads(spoken_clean)
+                        if isinstance(data, dict):
+                            if "spoken_response" in data:
+                                spoken_clean = str(data["spoken_response"]).strip()
+                            elif "response" in data:
+                                spoken_clean = str(data["response"]).strip()
+                            elif "message" in data:
+                                spoken_clean = str(data["message"]).strip()
+                    except Exception:
+                        break
+                else:
+                    break
+
+            for _ in range(10):
+                found = False
+                for token in [
+                    '"spoken_response":', "'spoken_response':", 'spoken_response":', "spoken_response':", 'spoken_response:',
+                    '"response":', "'response':", 'response":', "response':", 'response:',
+                    '"message":', "'message':", 'message":', "message':", 'message:',
+                    '"spoken_actions":', "'spoken_actions':", 'spoken_actions":', 'spoken_actions:',
+                    '"actions":', "'actions':", 'actions":', 'actions:'
+                ]:
+                    if token in spoken_clean:
+                        idx = spoken_clean.find(token) + len(token)
+                        spoken_clean = spoken_clean[idx:].strip(' \t\n\r"\'{},[]')
+                        found = True
+                if not found:
+                    break
+
+            spoken = spoken_clean.strip('{}[]"\' \t\n\r') if spoken_clean else "Command executed successfully, sir."
+
         print(f"[PIPELINE COMPLETE in {latency_ms:.1f}ms]: Spoken Response -> \"{spoken}\"")
 
         if hasattr(self, 'gui') and self.gui:
@@ -252,8 +294,12 @@ class JarvisVirtualAssistant:
             self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{spoken}\""))
             self.gui.after(0, lambda: self.gui.update_status("Speaking Response...", "#00E676"))
 
+        # Wait for TTS audio playback to completely finish before unmuting mic / returning to standby
+        # This prevents the microphone from capturing speaker audio feedback and repeating commands
         event = threading.Event()
         self.voice.speak(spoken, callback=lambda: event.set())
+        event.wait(timeout=10.0)
+        time.sleep(0.4)
 
         # 5. Persist ISO Timestamped Audit Log
         self._write_execution_log(
