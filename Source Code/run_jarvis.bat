@@ -34,41 +34,24 @@ goto NO_PYTHON
 echo [SYSTEM CHECK]: Found Python runtime (%PYTHON_CMD%).
 
 :: 2. Check if .venv exists
-if exist ".\Source Code\.venv\Scripts\python.exe" (
-    set "VENV_PYTHON=.\Source Code\.venv\Scripts\python.exe"
-    goto VERIFY_DEPS
-)
-if exist ".\.venv\Scripts\python.exe" (
-    set "VENV_PYTHON=.\.venv\Scripts\python.exe"
-    goto VERIFY_DEPS
-)
+if exist ".\.venv\Scripts\python.exe" goto VERIFY_DEPS
 
 echo.
 echo =======================================================
 echo  FIRST-RUN INITIALIZATION: Provisioning Virtualenv
 echo =======================================================
 echo [1/3] Creating local virtual environment (.venv)...
-if exist ".\Source Code" (
-    %PYTHON_CMD% -m venv ".\Source Code\.venv"
-    set "VENV_PYTHON=.\Source Code\.venv\Scripts\python.exe"
-) else (
-    %PYTHON_CMD% -m venv .venv
-    set "VENV_PYTHON=.\.venv\Scripts\python.exe"
-)
+%PYTHON_CMD% -m venv .venv
 if errorlevel 1 goto VENV_FAIL
 
 echo [2/3] Bootstrapping and upgrading pip package installer...
-"%VENV_PYTHON%" -m ensurepip --default-pip >nul 2>&1
-"%VENV_PYTHON%" -m pip install --upgrade pip >nul 2>&1
+.\.venv\Scripts\python.exe -m ensurepip --default-pip >nul 2>&1
+.\.venv\Scripts\python.exe -m pip install --upgrade pip >nul 2>&1
 
 echo [3/3] Installing all required AI, GUI, and Audio packages...
 echo       (This may take 1-2 minutes on first run. Please wait...)
 echo.
-if exist ".\Source Code\requirements.txt" (
-    "%VENV_PYTHON%" -m pip install -r ".\Source Code\requirements.txt"
-) else (
-    "%VENV_PYTHON%" -m pip install -r requirements.txt
-)
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 goto DEPS_WARN
 
 echo.
@@ -77,20 +60,16 @@ echo.
 
 :VERIFY_DEPS
 :: 3. Verify core runtime dependencies inside .venv
-"%VENV_PYTHON%" -m pip --version >nul 2>&1
+.\.venv\Scripts\python.exe -m pip --version >nul 2>&1
 if errorlevel 1 (
     echo [NOTICE]: Bootstrapping missing pip installer inside .venv...
-    "%VENV_PYTHON%" -m ensurepip --default-pip >nul 2>&1
+    .\.venv\Scripts\python.exe -m ensurepip --default-pip >nul 2>&1
 )
 
-"%VENV_PYTHON%" -c "import pydantic, requests, PyQt6" >nul 2>&1
+.\.venv\Scripts\python.exe -c "import pydantic, requests, PyQt6" >nul 2>&1
 if errorlevel 1 (
     echo [NOTICE]: Installing missing dependencies inside .venv...
-    if exist ".\Source Code\requirements.txt" (
-        "%VENV_PYTHON%" -m pip install -r ".\Source Code\requirements.txt"
-    ) else (
-        "%VENV_PYTHON%" -m pip install -r requirements.txt
-    )
+    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 )
 
 :: 4. Check Ollama background service status & auto-launch
@@ -108,11 +87,9 @@ if not errorlevel 1 (
     :: Ensure jarvis-trained-model exists in Ollama
     ollama list | findstr /i "jarvis-trained-model" >nul 2>&1
     if errorlevel 1 (
-        if exist ".\Source Code\models\jarvis-trained-model.gguf" (
+        if exist ".\models\jarvis-trained-model.gguf" (
             echo [OLLAMA SETUP]: Registering jarvis-trained-model from local GGUF...
-            pushd ".\Source Code"
             ollama create jarvis-trained-model -f Modelfile
-            popd
         ) else (
             echo [OLLAMA SETUP]: Local GGUF not bundled. Auto-pulling base model qwen2.5:1.5b...
             ollama pull qwen2.5:1.5b
@@ -134,11 +111,9 @@ if not errorlevel 1 (
                 echo.
                 echo ### Response:
                 echo """
-            ) > ".\Source Code\Modelfile.auto"
-            pushd ".\Source Code"
+            ) > "Modelfile.auto"
             ollama create jarvis-trained-model -f Modelfile.auto
             del /f /q Modelfile.auto >nul 2>&1
-            popd
         )
     )
 ) else (
@@ -150,13 +125,7 @@ echo.
 echo [LAUNCH]: Starting JARVIS AI Workstation...
 echo =======================================================
 echo.
-if exist ".\Source Code\main.py" (
-    pushd ".\Source Code"
-    ".\.venv\Scripts\python.exe" main.py
-    popd
-) else (
-    "%VENV_PYTHON%" main.py
-)
+.\.venv\Scripts\python.exe main.py
 
 if errorlevel 1 goto RUN_ERROR
 

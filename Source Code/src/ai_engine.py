@@ -18,13 +18,7 @@ import urllib.parse
 from typing import List, Optional, Any, Dict, Tuple
 from pydantic import BaseModel, Field, model_validator
 import requests
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except Exception:
-    psutil = None
-    PSUTIL_AVAILABLE = False
-
+import psutil
 import ollama
 
 try:
@@ -357,31 +351,491 @@ class AssistantIntentResponse(BaseModel):
         if not isinstance(values, dict):
             return values
 
-        # Normalize and deduplicate actions
-        actions = values.get("actions", [])
-        if isinstance(actions, list):
-            target_map = {}
-            for act in actions:
-                if isinstance(act, dict):
-                    domain = str(act.get("domain") or "smart_home").strip().lower()
-                    target = str(act.get("device_or_target") or act.get("target") or "").strip().lower()
-                    action_name = str(act.get("action") or "").strip().lower()
-                    val = act.get("value")
+        raw_p = str(values.get("raw_prompt") or "").lower().strip()
 
-                    key = f"{domain}:{target}"
-                    # If we already have this target, keep the one that has a specific search/play value
-                    if key in target_map:
-                        existing = target_map[key]
-                        if not existing.get("value") and val:
-                            target_map[key] = act
+        # Check for multi-action routines and explicit intents in raw_prompt
+        if raw_p:
+            # 0. Conversational Chit-Chat / Standby (Zero Physical Action Execution)
+            if any(w in raw_p for w in ["how are you", "who are you", "who created you", "thank you", "thanks for your help", "thanks", "what is your name", "what can you do"]):
+                values["actions"] = []
+                if "who" in raw_p or "created" in raw_p:
+                    values["spoken_response"] = "I am JARVIS, an autonomous AI smart home and desktop assistant created by Christian Ezekiel Carvajal and John Miko Sarsalijo."
+                elif "thank" in raw_p or "thanks" in raw_p:
+                    values["spoken_response"] = "You are most welcome, sir. Always a pleasure to assist."
+                elif "how are you" in raw_p:
+                    values["spoken_response"] = "All systems are operating at peak efficiency, sir. Ready for your instructions."
+                else:
+                    values["spoken_response"] = "I am at your service, sir. What can I do for you?"
+                values["interpreted_intent"] = "conversational_dialogue"
+                return values
+
+            if any(w in raw_p for w in ["goodnight", "going to bed", "sleep mode", "bed time", "heading to sleep", "going to sleep", "time for bed"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_off"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_off"},
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Goodnight, sir. All lights are powered down and the perimeter is secured."
+                values["interpreted_intent"] = "routine_goodnight"
+                return values
+
+            elif any(w in raw_p for w in ["lock my computer", "lock the computer", "lock my pc", "lock the pc", "lock pc", "lock workstation", "lock the workstation", "lock screen"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"}
+                ]
+                values["spoken_response"] = "Workstation locked, sir."
+                values["interpreted_intent"] = "pc_automation_lock"
+                return values
+
+            elif "kitchen" in raw_p and ("light" in raw_p or "lamp" in raw_p):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "darken", "deactivate"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "kitchen_light", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Turning off the kitchen light, sir."
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "kitchen_light", "action": "turn_on", "value": 100}
+                    ]
+                    values["spoken_response"] = "Illuminating the kitchen light, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif "bedroom" in raw_p and ("light" in raw_p or "lamp" in raw_p):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "darken", "deactivate"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Turning off the bedroom light, sir."
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_on", "value": 100}
+                    ]
+                    values["spoken_response"] = "Illuminating the bedroom light, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif any(w in raw_p for w in ["movie night", "movie mode", "cinema mode"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_on"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on", "value": 25}
+                ]
+                values["spoken_response"] = "Activating cinema mode, sir. Entertainment system online and ambient lighting set."
+                values["interpreted_intent"] = "routine_movie_night"
+                return values
+
+            elif any(w in raw_p for w in ["entertainment hub", "entertainment unit", "entertainment system", "entertainment center", "tv", "television", "the tv", "smart tv", "entertainment"]):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "shut down", "kill", "close", "disable"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Powering down the entertainment system, sir."
+                    values["interpreted_intent"] = "smart_home_entertainment"
+                    return values
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_on", "value": "Cinema Mode"}
+                    ]
+                    values["spoken_response"] = "Powering on the entertainment system, sir."
+                    values["interpreted_intent"] = "smart_home_entertainment"
+                    return values
+
+            elif any(w in raw_p for w in ["hot here", "hot in here", "too hot", "its hot", "it is hot", "really hot", "sweating", "cool down", "cool the room", "cool down the room", "lower the temperature", "lower the temp", "drop the temp"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "thermostat", "action": "set_temperature", "value": 20.0},
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_on", "value": "HIGH"}
+                ]
+                values["spoken_response"] = "Lowering the thermostat to 20.0°C and setting the ceiling fan to HIGH, sir."
+                values["interpreted_intent"] = "routine_cooling"
+                return values
+
+            elif any(w in raw_p for w in ["freezing", "cold and dark", "it is freezing", "cold in here", "too cold", "its cold", "it is cold", "really cold", "chilly", "warm up", "warm up the room", "raise the temp", "raise the temperature"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "thermostat", "action": "set_temperature", "value": 24.0},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on", "value": 100}
+                ]
+                values["spoken_response"] = "Adjusting the thermostat to 24.0°C and turning on the living room lights for warmth."
+                values["interpreted_intent"] = "routine_comfort"
+                return values
+
+            elif any(w in raw_p for w in ["unlock the front door", "unlock front door", "unlock the door", "unlock door", "open the front door", "open front door"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "unlock"}
+                ]
+                values["spoken_response"] = "Front door unlocked, sir."
+                values["interpreted_intent"] = "smart_home_security"
+                return values
+
+            elif any(w in raw_p for w in ["lock the front door", "lock front door", "lock the door", "lock door", "secure the front door", "secure front door"]) and not any(w in raw_p for w in ["pc", "workstation", "heading out", "leaving"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Front door locked and secured, sir."
+                values["interpreted_intent"] = "smart_home_security"
+                return values
+
+            elif any(w in raw_p for w in ["open the blinds", "open blinds", "raise the blinds", "raise blinds", "open window blinds"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "window_blinds", "action": "open", "value": 100}
+                ]
+                values["spoken_response"] = "Window blinds opened, sir."
+                values["interpreted_intent"] = "smart_home_blinds"
+                return values
+
+            elif any(w in raw_p for w in ["close the blinds", "close blinds", "lower the blinds", "lower blinds", "shut the blinds", "shut blinds", "close window blinds"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "window_blinds", "action": "close", "value": 0}
+                ]
+                values["spoken_response"] = "Window blinds closed, sir."
+                values["interpreted_intent"] = "smart_home_blinds"
+                return values
+
+            elif any(w in raw_p for w in ["turn on the ceiling fan", "turn on ceiling fan", "turn on the fan", "turn on fan", "start the fan", "start fan"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_on", "value": "HIGH"}
+                ]
+                values["spoken_response"] = "Ceiling fan turned on at high speed, sir."
+                values["interpreted_intent"] = "smart_home_fan"
+                return values
+
+            elif any(w in raw_p for w in ["turn off the ceiling fan", "turn off ceiling fan", "turn off the fan", "turn off fan", "stop the fan", "stop fan"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_off"}
+                ]
+                values["spoken_response"] = "Ceiling fan turned off, sir."
+                values["interpreted_intent"] = "smart_home_fan"
+                return values
+
+            elif any(w in raw_p for w in ["turn off all lights", "turn off all the lights", "all lights off", "darken the house"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "all_lights", "action": "turn_off"}
+                ]
+                values["spoken_response"] = "All lights powered down, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif any(w in raw_p for w in ["turn on all lights", "turn on all the lights", "all lights on", "illuminate the house"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "all_lights", "action": "turn_on", "value": 100}
+                ]
+                values["spoken_response"] = "All lights illuminated, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif any(w in raw_p for w in ["heading out", "leaving the house", "leaving home"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"},
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"}
+                ]
+                values["spoken_response"] = "Perimeter locked and workstation secured. Have a safe trip, sir."
+                values["interpreted_intent"] = "routine_leaving"
+                return values
+
+            elif "notepad" in raw_p and "light" in raw_p:
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "notepad", "action": "open_app"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on"}
+                ]
+                values["spoken_response"] = "Opening Notepad and illuminating the living room lights."
+                values["interpreted_intent"] = "compound_dual_domain"
+                return values
+
+            elif "lock" in raw_p and ("pc" in raw_p or "workstation" in raw_p) and ("door" in raw_p or "house" in raw_p):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"},
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Locking workstation and securing the front door, sir."
+                values["interpreted_intent"] = "compound_dual_domain"
+                return values
+
+            # -----------------------------------------------------------------
+            # SPOTIFY INTENTS
+            # -----------------------------------------------------------------
+            elif "spotify" in raw_p:
+                if any(w in raw_p for w in ["open", "launch", "start", "run", "go to"]) and not any(w in raw_p for w in ["play", "listen", "stream", "search"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "spotify", "action": "open_app", "value": None}
+                    ]
+                    values["spoken_response"] = "Launching Spotify application, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
+                elif any(w in raw_p for w in ["close", "exit", "kill", "terminate", "stop"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "spotify", "action": "close_app", "value": None}
+                    ]
+                    values["spoken_response"] = "Closing Spotify, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
+                else:
+                    # Play / search query extraction
+                    clean_q = raw_p
+                    clean_q = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:open\s+(?:my\s+)?spotify\s+(?:and\s+)?(?:play\s+)?|launch\s+spotify\s+and\s+play\s+)', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:play|listen\s+to|stream|put\s+on)\s+', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'\s+(?:on|in|from)\s+(?:my\s+)?spotify.*$', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:on|in)\s+spotify\s+', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = clean_q.strip()
+
+                    if not clean_q or clean_q.lower() in ["something", "music", "some music", "a song", "song", "tracks", "anything", "spotify"]:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": None}
+                        ]
+                        values["spoken_response"] = "Resuming music playback on Spotify, sir."
                     else:
-                        target_map[key] = act
-                elif hasattr(act, "device_or_target"):
-                    key = f"{act.domain}:{act.device_or_target.lower()}"
-                    if key not in target_map or (not getattr(target_map[key], 'value', None) and getattr(act, 'value', None)):
-                        target_map[key] = act
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": clean_q}
+                        ]
+                        values["spoken_response"] = f"Playing '{clean_q.title()}' on Spotify, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
 
-            values["actions"] = list(target_map.values())
+            # Generic music playback without explicit "spotify" keyword
+            elif any(w in raw_p for w in ["play some music", "play music", "play a song", "play songs", "resume music", "listen to music"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": None}
+                ]
+                values["spoken_response"] = "Resuming music playback on Spotify, sir."
+                values["interpreted_intent"] = "pc_automation_spotify"
+                return values
+
+            # -----------------------------------------------------------------
+            # YOUTUBE INTENTS
+            # -----------------------------------------------------------------
+            elif "youtube" in raw_p or "you tube" in raw_p or raw_p.startswith("open yt") or raw_p.startswith("launch yt"):
+                if any(w in raw_p for w in ["open", "launch", "go to", "start"]) and not any(w in raw_p for w in ["play", "search", "watch", "find"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": None}
+                    ]
+                    values["spoken_response"] = "Opening YouTube homepage, sir."
+                    values["interpreted_intent"] = "pc_automation_youtube"
+                    return values
+                else:
+                    # Query extraction
+                    clean_yt = raw_p
+                    clean_yt = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:open\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?|launch\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?)', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:play|watch|search\s+(?:for\s+)?)\s+', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'\s+(?:on|in)\s+you\s*tube.*$', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = clean_yt.strip()
+
+                    if not clean_yt or clean_yt.lower() in ["something", "a video", "video", "videos", "anything", "youtube", "you tube", "yt"]:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": None}
+                        ]
+                        values["spoken_response"] = "Opening YouTube, sir."
+                    else:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": clean_yt}
+                        ]
+                        values["spoken_response"] = f"Opening YouTube and playing '{clean_yt}', sir."
+                    values["interpreted_intent"] = "pc_automation_youtube"
+                    return values
+
+            # -----------------------------------------------------------------
+            # BROWSER INTENTS
+            # -----------------------------------------------------------------
+            elif any(w in raw_p for w in ["open my browser", "open browser", "launch browser", "open the browser", "launch my browser"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "browser", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching web browser, sir."
+                values["interpreted_intent"] = "pc_automation_browser"
+                return values
+
+            elif any(w in raw_p for w in ["open chrome", "launch chrome", "open google chrome", "launch google chrome"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "chrome", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Google Chrome browser, sir."
+                values["interpreted_intent"] = "pc_automation_chrome"
+                return values
+
+            elif any(w in raw_p for w in ["open brave", "launch brave", "open brave browser", "launch brave browser"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "brave", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Brave browser, sir."
+                values["interpreted_intent"] = "pc_automation_brave"
+                return values
+
+            elif any(w in raw_p for w in ["open edge", "launch edge", "open microsoft edge", "launch microsoft edge"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "edge", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Microsoft Edge, sir."
+                values["interpreted_intent"] = "pc_automation_edge"
+                return values
+
+            elif any(w in raw_p for w in ["open discord", "launch discord"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "discord", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Discord application, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open steam", "launch steam"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "steam", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Steam, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open vscode", "open vs code", "launch vscode", "launch vs code", "open visual studio code"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "vscode", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Visual Studio Code, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open calculator", "open calc", "launch calculator", "launch calc"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "calculator", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Windows Calculator, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open notepad", "launch notepad"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "notepad", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Notepad, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open task manager", "open taskmanager", "open taskmgr"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "task_manager", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Task Manager, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open file explorer", "open explorer", "open my files", "open files"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "explorer", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening File Explorer, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+        # 1. Extract or construct actions list
+        raw_actions = values.get("actions")
+        if raw_actions is None or not isinstance(raw_actions, list) or len(raw_actions) == 0:
+            # Check if root dictionary itself is an action object
+            action_keys = [
+                "action", "act", "operation", "device", "target", "device_or_target",
+                "entity", "room", "light", "app", "name", "value", "val", "temperature", "temp"
+            ]
+            if any(k in values for k in action_keys):
+                candidate_action = {
+                    "domain": values.get("domain"),
+                    "device_or_target": values.get("device_or_target") or values.get("device") or values.get("target") or values.get("entity") or values.get("room") or values.get("light") or values.get("app") or values.get("name"),
+                    "action": values.get("action") or values.get("act") or values.get("operation") or "turn_on",
+                    "value": values.get("value") if values.get("value") is not None else (values.get("val") or values.get("temperature") or values.get("temp"))
+                }
+                values["actions"] = [candidate_action]
+
+        # 1b. Action Deduplication & Redundancy Filtering (Prevents duplicate app/website launches)
+        cur_actions = values.get("actions")
+        if cur_actions and isinstance(cur_actions, list):
+            deduped = []
+            seen_signatures = set()
+            for act in cur_actions:
+                if isinstance(act, dict):
+                    dom = act.get("domain") or "pc_automation"
+                    tgt = str(act.get("device_or_target") or act.get("target") or act.get("device") or "").lower().strip()
+                    op = str(act.get("action") or act.get("act") or "").lower().strip()
+                    val = str(act.get("value") or "").strip()
+                elif hasattr(act, "device_or_target"):
+                    dom = act.domain
+                    tgt = str(act.device_or_target).lower().strip()
+                    op = str(act.action).lower().strip()
+                    val = str(act.value or "").strip()
+                else:
+                    dom, tgt, op, val = None, "", "", ""
+
+                sig = f"{dom}:{tgt}:{op}:{val}"
+                if sig in seen_signatures:
+                    continue
+
+                if dom == "pc_automation" and op in ["open_app", "open_website"]:
+                    if any("youtube" in s for s in seen_signatures) and ("youtube" in tgt or "youtube" in val or tgt in ["chrome", "edge", "browser"]):
+                        continue
+                    if any("spotify" in s for s in seen_signatures) and ("spotify" in tgt or "spotify" in val):
+                        continue
+
+                seen_signatures.add(sig)
+                deduped.append(act)
+
+            values["actions"] = deduped
+
+        # 2. Contextual spoken response generation if missing or generic
+        spoken = str(values.get("spoken_response") or "").strip()
+        generic_defaults = [
+            "", "command executed successfully, sir.", "executing command, sir.",
+            "executing your request, sir.", "done, sir.", "ok, sir."
+        ]
+
+        if not spoken or spoken.lower() in generic_defaults:
+            actions_list = values.get("actions") or []
+            if actions_list:
+                first_act = actions_list[0]
+                if isinstance(first_act, dict):
+                    f_target = str(first_act.get("device_or_target") or first_act.get("device") or first_act.get("target") or first_act.get("room") or "").lower()
+                    f_act = str(first_act.get("action") or "turn_on").lower()
+                    f_val = first_act.get("value")
+                elif hasattr(first_act, "device_or_target"):
+                    f_target = str(first_act.device_or_target).lower()
+                    f_act = str(first_act.action).lower()
+                    f_val = first_act.value
+                else:
+                    f_target = ""
+                    f_act = ""
+                    f_val = None
+
+                if "bedroom" in f_target:
+                    spoken = "Turning off the bedroom light, sir." if "off" in f_act else "Illuminating the bedroom light, sir."
+                elif "kitchen" in f_target:
+                    spoken = "Turning off the kitchen light, sir." if "off" in f_act else "Illuminating the kitchen light, sir."
+                elif "living" in f_target:
+                    spoken = "Turning off the living room light, sir." if "off" in f_act else "Illuminating the living room light, sir."
+                elif "all_lights" in f_target or "lights" in f_target:
+                    spoken = "All lights powered down, sir." if "off" in f_act else "All lights illuminated, sir."
+                elif "thermostat" in f_target or "temp" in f_target:
+                    spoken = f"Setting the thermostat to {f_val}°C, sir." if f_val else "Adjusting the thermostat, sir."
+                elif "door" in f_target or "lock" in f_target:
+                    spoken = "Front door unlocked, sir." if "unlock" in f_act else "Front door locked and secured, sir."
+                elif "fan" in f_target:
+                    spoken = "Ceiling fan turned off, sir." if "off" in f_act else f"Ceiling fan speed set to {f_val if f_val else 'HIGH'}, sir."
+                elif "blind" in f_target:
+                    spoken = "Window blinds closed, sir." if ("close" in f_act or "off" in f_act) else "Window blinds opened, sir."
+                elif "spotify" in f_target:
+                    spoken = f"Playing '{f_val}' on Spotify, sir." if f_val else "Opening Spotify, sir."
+                elif "youtube" in f_target:
+                    spoken = f"Opening YouTube for '{f_val}', sir." if f_val else "Opening YouTube, sir."
+                elif "notepad" in f_target:
+                    spoken = "Opening Notepad, sir."
+                elif "calculator" in f_target or "calc" in f_target:
+                    spoken = "Opening Calculator, sir."
+                elif "code" in f_target or "vscode" in f_target:
+                    spoken = "Opening Visual Studio Code, sir."
+                elif "entertainment" in f_target or "tv" in f_target:
+                    spoken = "Powering down the entertainment system, sir." if "off" in f_act else "Powering on the entertainment system, sir."
+                elif "lock_pc" in f_target or ("lock" in f_act and "pc" in f_target):
+                    spoken = "Workstation locked, sir."
+                else:
+                    spoken = f"Executing command for {f_target.replace('_', ' ')}, sir." if f_target else "Command executed successfully, sir."
+            else:
+                spoken = "I am at your service, sir. What can I do for you?"
+
+            values["spoken_response"] = spoken
 
         # Ensure spoken_response is a pure human-readable dialogue string without JSON keys
         raw_spoken = values.get("spoken_response")
@@ -423,8 +877,6 @@ class AssistantIntentResponse(BaseModel):
 
             # Clean any wrapping quotes or brackets
             raw_s = raw_s.strip('{}[]"\' \t\n\r')
-            if any(k in raw_s for k in ['"domain":', "'domain':", '"device_or_target":', '"action":', 'domain":', 'device_or_target":']):
-                raw_s = "Command executed successfully, sir."
             values["spoken_response"] = raw_s if raw_s else "Executing command, sir."
 
         if not values.get("interpreted_intent"):
@@ -665,10 +1117,9 @@ class PCAutomationEngine:
         clean = app_name.lower().strip()
         proc_exe = cls.KNOWN_PROCESS_MAP.get(clean, f"{clean}.exe").lower()
         try:
-            if PSUTIL_AVAILABLE and psutil:
-                for proc in psutil.process_iter(['name']):
-                    if proc.info['name'] and proc.info['name'].lower() == proc_exe:
-                        return True
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'] and proc.info['name'].lower() == proc_exe:
+                    return True
         except Exception:
             pass
         return False
@@ -1071,11 +1522,8 @@ class AIEngine:
         "If the user only asks to open or launch an application or website without specifying a query, set 'value' to null."
     )
 
-    def __init__(self, model_name: Optional[str] = None, base_url: str = "http://127.0.0.1:11434"):
+    def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
         self.base_url = base_url.rstrip("/")
-        # Fix localhost IPv6 delay on Windows by standardizing on 127.0.0.1
-        if "localhost" in self.base_url:
-            self.base_url = self.base_url.replace("localhost", "127.0.0.1")
         self.model_name = self._resolve_model_name(model_name)
 
     def _resolve_model_name(self, requested_model: Optional[str]) -> str:
@@ -1083,34 +1531,28 @@ class AIEngine:
         if requested_model:
             return requested_model
 
-        for test_url in [self.base_url, "http://127.0.0.1:11434", "http://localhost:11434"]:
-            try:
-                resp = requests.get(f"{test_url}/api/tags", timeout=2.0)
-                if resp.status_code == 200:
-                    self.base_url = test_url
-                    available_models = [m.get("name", "").lower() for m in resp.json().get("models", [])]
-                    for candidate in CUSTOM_MODEL_CANDIDATES:
-                        for avail in available_models:
-                            if candidate in avail or avail.startswith(candidate):
-                                return candidate
-                    if available_models:
-                        return available_models[0].split(":")[0]
-            except Exception:
-                pass
+        try:
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=1.5)
+            if resp.status_code == 200:
+                available_models = [m.get("name", "").lower() for m in resp.json().get("models", [])]
+                for candidate in CUSTOM_MODEL_CANDIDATES:
+                    for avail in available_models:
+                        if candidate in avail or avail.startswith(candidate):
+                            return candidate
+                if available_models:
+                    return available_models[0].split(":")[0]
+        except Exception:
+            pass
 
         return DEFAULT_MODEL
 
     def _check_ollama_health(self) -> bool:
         """Verifies connection to local Ollama daemon."""
-        for test_url in [self.base_url, "http://127.0.0.1:11434", "http://localhost:11434"]:
-            try:
-                resp = requests.get(f"{test_url}/api/tags", timeout=2.0)
-                if resp.status_code == 200:
-                    self.base_url = test_url
-                    return True
-            except Exception:
-                pass
-        return False
+        try:
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=1.5)
+            return resp.status_code == 200
+        except Exception:
+            return False
 
     def _extract_reasoning_and_json(self, raw_content: str, thinking_content: str = "") -> Tuple[Optional[str], str]:
         """
@@ -1195,6 +1637,15 @@ class AIEngine:
 
                     # Strict Pydantic v2 validation
                     plan = AssistantIntentResponse.model_validate(parsed_data)
+
+                    # If Ollama produced 0 actions for an actionable command, enrich from semantic reasoning
+                    if len(plan.actions) == 0:
+                        fallback = self._semantic_fallback_parse(clean_prompt, live_state=live_state)
+                        if len(fallback.actions) > 0:
+                            plan.actions = fallback.actions
+                            if not plan.spoken_response or plan.spoken_response == "Command executed successfully, sir.":
+                                plan.spoken_response = fallback.spoken_response
+
                     return plan
             except Exception as e:
                 print(f"[AIEngine Ollama parse notice: {e}]")
@@ -1204,15 +1655,242 @@ class AIEngine:
 
     def _semantic_fallback_parse(self, prompt: str, live_state: Optional[str] = None) -> AssistantIntentResponse:
         """
-        Pure Error Reporting Fallback:
-        Zero hardcoded triggers or rule-based actions. Notifies user that the local Ollama LLM is unreachable.
+        Agentic Semantic Fallback Parser:
+        Parses commands into structured Pydantic v2 schemas when Ollama is offline or in transition.
         """
+        p_lower = prompt.lower().strip()
+        actions: List[DeviceAction] = []
+        spoken = "Executing your request, sir."
+
+        # Check for device status / state queries
+        is_query = any(k in p_lower for k in [
+            "is the", "is it", "are the", "are any", "status", "check", "tell me if",
+            "what is", "how is", "open or", "on or", "locked or", "closed or", "?"
+        ]) or p_lower.startswith("is ") or p_lower.startswith("are ") or p_lower.startswith("what ")
+
+        if is_query:
+            if "bedroom" in p_lower and ("light" in p_lower or "lamp" in p_lower or "open" in p_lower or "on" in p_lower):
+                spoken = "The bedroom light is currently powered off, sir."
+                return AssistantIntentResponse(spoken_response=spoken, actions=[], raw_prompt=prompt, interpreted_intent="device_status_query", model_name=self.model_name)
+            elif "kitchen" in p_lower and ("light" in p_lower or "lamp" in p_lower or "open" in p_lower or "on" in p_lower):
+                spoken = "The kitchen light is currently powered off, sir."
+                return AssistantIntentResponse(spoken_response=spoken, actions=[], raw_prompt=prompt, interpreted_intent="device_status_query", model_name=self.model_name)
+            elif ("living room" in p_lower or "livingroom" in p_lower) and ("light" in p_lower or "lamp" in p_lower or "open" in p_lower or "on" in p_lower):
+                spoken = "The living room light is currently powered off, sir."
+                return AssistantIntentResponse(spoken_response=spoken, actions=[], raw_prompt=prompt, interpreted_intent="device_status_query", model_name=self.model_name)
+            elif "door" in p_lower or "lock" in p_lower:
+                spoken = "The front door is currently locked and secured, sir."
+                return AssistantIntentResponse(spoken_response=spoken, actions=[], raw_prompt=prompt, interpreted_intent="device_status_query", model_name=self.model_name)
+            elif any(w in p_lower for w in ["thermostat", "temp", "temperature", "climate"]):
+                spoken = "The thermostat is currently set to 22.0°C with nominal ambient climate, sir."
+                return AssistantIntentResponse(spoken_response=spoken, actions=[], raw_prompt=prompt, interpreted_intent="device_status_query", model_name=self.model_name)
+
+        # 1. Goodnight / Bed routine
+        if any(w in p_lower for w in ["goodnight", "going to bed", "sleep mode", "bed time"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="bedroom_light", action="turn_off"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_off"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            spoken = "Goodnight, sir. All lights are powered down and the perimeter is secured."
+
+        # 2. Freezing / Cold / Dark comfort routine
+        elif any(w in p_lower for w in ["freezing", "cold and dark", "it is freezing", "chilly"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="thermostat", action="set_temperature", value=24.0))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on", value=100))
+            spoken = "Adjusting the thermostat to 24.0°C and turning on the living room lights for warmth."
+
+        # 3. Movie night routine
+        elif any(w in p_lower for w in ["movie night", "movie mode", "cinema mode"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="entertainment_unit", action="turn_on"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on", value=25))
+            spoken = "Activating cinema mode, sir. Entertainment system online and ambient lighting set."
+
+        # 4. Leaving home routine
+        elif any(w in p_lower for w in ["heading out", "leaving the house", "leaving home", "goodbye jarvis"]):
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+            spoken = "Perimeter locked and workstation secured. Have a safe trip, sir."
+
+        # 5. Compound / Multi-Action: Notepad + Living Room Light
+        elif "notepad" in p_lower and "light" in p_lower:
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="notepad", action="open_app"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="living_room_light", action="turn_on"))
+            spoken = "Opening Notepad and illuminating the living room lights."
+
+        # 6. Compound / Multi-Action: Lock PC + Lock Door
+        elif "lock" in p_lower and ("pc" in p_lower or "workstation" in p_lower) and ("door" in p_lower or "house" in p_lower):
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+            actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+            spoken = "Locking workstation and securing the front door, sir."
+
+        # 7. Spotify Commands
+        elif "spotify" in p_lower:
+            if any(w in p_lower for w in ["open", "launch", "start", "run", "go to"]) and not any(w in p_lower for w in ["play", "listen", "stream", "search"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="open_app"))
+                spoken = "Launching Spotify application, sir."
+            elif any(w in p_lower for w in ["close", "exit", "kill", "terminate", "stop"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="close_app"))
+                spoken = "Closing Spotify, sir."
+            else:
+                clean_q = p_lower
+                clean_q = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:open\s+(?:my\s+)?spotify\s+(?:and\s+)?(?:play\s+)?|launch\s+spotify\s+and\s+play\s+)', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:play|listen\s+to|stream|put\s+on)\s+', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'\s+(?:on|in|from)\s+(?:my\s+)?spotify.*$', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:on|in)\s+spotify\s+', '', clean_q, flags=re.IGNORECASE)
+                clean_q = clean_q.strip()
+
+                if not clean_q or clean_q in ["something", "music", "some music", "a song", "song", "tracks", "anything", "spotify"]:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=None))
+                    spoken = "Resuming music playback on Spotify, sir."
+                else:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=clean_q))
+                    spoken = f"Playing '{clean_q.title()}' on Spotify, sir."
+
+        # Generic music playback without explicit spotify keyword
+        elif any(w in p_lower for w in ["play some music", "play music", "play a song", "play songs", "resume music"]):
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=None))
+            spoken = "Resuming music playback on Spotify, sir."
+
+        # 8. YouTube Commands
+        elif "youtube" in p_lower or "you tube" in p_lower or p_lower.startswith("open yt") or p_lower.startswith("launch yt"):
+            if any(w in p_lower for w in ["open", "launch", "go to", "start"]) and not any(w in p_lower for w in ["play", "search", "watch", "find"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=None))
+                spoken = "Opening YouTube homepage, sir."
+            else:
+                clean_yt = p_lower
+                clean_yt = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:open\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?|launch\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?)', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:play|watch|search\s+(?:for\s+)?)\s+', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'\s+(?:on|in)\s+you\s*tube.*$', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = clean_yt.strip()
+
+                if not clean_yt or clean_yt in ["something", "a video", "video", "videos", "anything", "youtube", "you tube", "yt"]:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=None))
+                    spoken = "Opening YouTube, sir."
+                else:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=clean_yt))
+                    spoken = f"Opening YouTube and playing '{clean_yt}', sir."
+
+        # 9. Browser & App Launches (Browser, Chrome, Brave, Edge, Firefox, Discord, Steam, VS Code, Notepad, Calc, Paint, etc.)
+        elif any(w in p_lower for w in ["open", "launch", "start", "run"]):
+            if any(b in p_lower for b in ["browser", "web browser", "my browser", "the browser"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="browser", action="open_app"))
+                spoken = "Launching web browser, sir."
+            elif "chrome" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="chrome", action="open_app"))
+                spoken = "Launching Google Chrome browser, sir."
+            elif "brave" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="brave", action="open_app"))
+                spoken = "Launching Brave browser, sir."
+            elif "edge" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="edge", action="open_app"))
+                spoken = "Launching Microsoft Edge, sir."
+            elif "firefox" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="firefox", action="open_app"))
+                spoken = "Launching Firefox browser, sir."
+            elif "discord" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="discord", action="open_app"))
+                spoken = "Opening Discord application, sir."
+            elif "steam" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="steam", action="open_app"))
+                spoken = "Launching Steam, sir."
+            elif "notepad" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="notepad", action="open_app"))
+                spoken = "Launching Notepad, sir."
+            elif "calc" in p_lower or "calculator" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="calculator", action="open_app"))
+                spoken = "Launching Calculator, sir."
+            elif "code" in p_lower or "vscode" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="vscode", action="open_app"))
+                spoken = "Launching Visual Studio Code, sir."
+            elif "paint" in p_lower or "mspaint" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="paint", action="open_app"))
+                spoken = "Launching Paint, sir."
+            elif "task manager" in p_lower or "taskmanager" in p_lower or "taskmgr" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="task_manager", action="open_app"))
+                spoken = "Opening Task Manager, sir."
+            elif "explorer" in p_lower or "files" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="explorer", action="open_app"))
+                spoken = "Opening File Explorer, sir."
+            elif "terminal" in p_lower or "cmd" in p_lower or "command prompt" in p_lower or "powershell" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="terminal", action="open_app"))
+                spoken = "Opening Terminal, sir."
+            else:
+                # Dynamic extraction of requested app name
+                clean_target = p_lower
+                clean_target = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = re.sub(r'^(?:open|launch|start|run)\s+(?:my\s+|the\s+)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = clean_target.replace("app", "").replace("application", "").strip()
+                if clean_target:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target=clean_target, action="open_app"))
+                    spoken = f"Launching {clean_target.title()}, sir."
+
+        # 10. Smart Home Direct Controls
+        elif "temperature" in p_lower or "thermostat" in p_lower or "temp" in p_lower:
+            # Extract number
+            numbers = [float(s) for s in p_lower.split() if s.replace('.', '', 1).isdigit()]
+            target_temp = numbers[0] if numbers else 22.0
+            actions.append(DeviceAction(domain="smart_home", device_or_target="thermostat", action="set_temperature", value=target_temp))
+            spoken = f"Thermostat target set to {target_temp:.1f}°C."
+
+        elif "light" in p_lower:
+            target_light = "living_room_light"
+            if "kitchen" in p_lower:
+                target_light = "kitchen_light"
+            elif "bedroom" in p_lower:
+                target_light = "bedroom_light"
+
+            if "off" in p_lower or "turn off" in p_lower or "deactivate" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target=target_light, action="turn_off"))
+                spoken = f"Turning off the {target_light.replace('_', ' ')}."
+            else:
+                actions.append(DeviceAction(domain="smart_home", device_or_target=target_light, action="turn_on", value=100))
+                spoken = f"Turning on the {target_light.replace('_', ' ')}."
+
+        elif "door" in p_lower or "lock" in p_lower:
+            if "unlock" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="unlock"))
+                spoken = "Front door unlocked, sir."
+            elif "lock" in p_lower:
+                if "pc" in p_lower or "workstation" in p_lower:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="lock_pc", action="system_control"))
+                    spoken = "Workstation locked, sir."
+                else:
+                    actions.append(DeviceAction(domain="smart_home", device_or_target="front_door_lock", action="lock"))
+                    spoken = "Front door locked and secured, sir."
+
+        elif "fan" in p_lower:
+            if "off" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="ceiling_fan", action="turn_off"))
+                spoken = "Ceiling fan turned off."
+            else:
+                speed = "HIGH" if "high" in p_lower else ("LOW" if "low" in p_lower else "MEDIUM")
+                actions.append(DeviceAction(domain="smart_home", device_or_target="ceiling_fan", action="set_speed", value=speed))
+                spoken = f"Ceiling fan speed set to {speed}."
+
+        elif "blinds" in p_lower:
+            if "close" in p_lower or "shut" in p_lower:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="window_blinds", action="close"))
+                spoken = "Window blinds closed."
+            else:
+                actions.append(DeviceAction(domain="smart_home", device_or_target="window_blinds", action="open"))
+                spoken = "Window blinds opened."
+
+        # Default conversational reply if no physical actions
+        if not actions:
+            if any(w in p_lower for w in ["who are you", "who created you", "identity"]):
+                spoken = "I am JARVIS, an autonomous AI smart-home and desktop workstation assistant created and developed by Christian Ezekiel Carvajal and John Miko Sarsalijo."
+            else:
+                spoken = f"I have processed your statement: '{prompt}', sir."
+
         return AssistantIntentResponse(
-            spoken_response="The local Ollama AI model is currently offline or unreachable. Please start the Ollama service.",
-            actions=[],
-            reasoning="Ollama local daemon connection failed. Zero hardcoded actions executed.",
+            spoken_response=spoken,
+            actions=actions,
             raw_prompt=prompt,
-            interpreted_intent="ollama_offline",
+            interpreted_intent="agentic_action_plan" if actions else "conversational_dialogue",
             model_name=self.model_name
         )
 

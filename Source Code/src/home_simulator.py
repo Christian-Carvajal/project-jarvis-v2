@@ -21,12 +21,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Callable
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except Exception:
-    psutil = None
-    PSUTIL_AVAILABLE = False
+import psutil
 
 
 # =============================================================================
@@ -294,16 +289,7 @@ class SmartHomeStateMachine:
             self.log_filepath = log_filepath
         else:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            search_dirs = [
-                current_dir,
-                os.path.abspath(os.path.join(current_dir, "..")),
-                os.path.abspath(os.path.join(current_dir, "..", "..")),
-            ]
-            proj_root = current_dir
-            for d in search_dirs:
-                if os.path.exists(os.path.join(d, "Execution Log")) or os.path.exists(os.path.join(d, "Source Code")):
-                    proj_root = d
-                    break
+            proj_root = os.path.abspath(os.path.join(current_dir, "..")) if os.path.basename(current_dir) in ["src", "Source Code", "core"] else current_dir
             exec_dir = os.path.join(proj_root, "Execution Log")
             os.makedirs(exec_dir, exist_ok=True)
             self.log_filepath = os.path.join(exec_dir, "assistant_execution.log")
@@ -722,7 +708,7 @@ class ModernHomeDashboard(tk.Tk):
 
         self.model_combo = ttk.Combobox(
             top_bar,
-            values=["jarvis-trained-model"],
+            values=["jarvis-trained-model", "qwen2.5:1.5b"],
             state="readonly",
             width=20,
             font=("Consolas", 9)
@@ -1458,13 +1444,9 @@ class ModernHomeDashboard(tk.Tk):
         def _poll():
             while True:
                 try:
-                    if PSUTIL_AVAILABLE and psutil:
-                        cpu = psutil.cpu_percent(interval=None)
-                        ram_mb = int(psutil.Process().memory_info().rss / (1024 * 1024))
-                    else:
-                        cpu = 12.0
-                        ram_mb = 280
-                    self.after(0, lambda c=cpu, r=ram_mb: self.telemetry_label.config(text=f"CPU: {c:.0f}% | RAM: {r} MB"))
+                    cpu = psutil.cpu_percent(interval=None)
+                    ram_mb = int(psutil.Process().memory_info().rss / (1024 * 1024))
+                    self.after(0, lambda: self.telemetry_label.config(text=f"CPU: {cpu:.0f}% | RAM: {ram_mb} MB"))
                 except Exception:
                     pass
                 time.sleep(2.0)

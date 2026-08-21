@@ -1,4 +1,4 @@
-FROM ./Jarvis35.2bv2/Qwen3.5-2B.Q4_K_M.gguf
+FROM ./models/jarvis-trained-model.gguf
 
 PARAMETER temperature 0.2
 PARAMETER top_p 0.95

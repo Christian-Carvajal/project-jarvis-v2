@@ -455,20 +455,6 @@ class VoicePipeline:
         self.is_mic_muted = not self.is_mic_muted
         return self.is_mic_muted
 
-    @property
-    def is_listening(self) -> bool:
-        """Returns True if the microphone is active and not muted."""
-        return not self.is_mic_muted
-
-    @is_listening.setter
-    def is_listening(self, val: bool):
-        self.is_mic_muted = not bool(val)
-
-    def stop(self):
-        """Stops audio stream and TTS workers."""
-        if hasattr(self, 'tts') and self.tts:
-            self.tts.stop()
-
     def normalize_speech_text(self, text: str) -> str:
         """Normalizes common speech phonetic misrecognitions for commands and applications."""
         if not text:
@@ -484,23 +470,33 @@ class VoicePipeline:
 
     def filter_wake_word(self, transcript: str) -> Tuple[bool, str]:
         """
-        Strict 2-Stage Acoustic Wake-Word Gating:
+        Flexible Wake-Word Gating with Fragment Protection:
         Matches: 'jarvis', 'hey jarvis', 'hi jarvis', 'hello jarvis', 'okay jarvis', 'jarvisst', etc.
+        Also accepts direct action requests (e.g., 'turn on bedroom light', 'open spotify').
         Returns:
             (is_wake: bool, sanitized_command: str)
         """
         if not transcript:
             return False, ""
 
-        clean = self.normalize_speech_text(transcript).strip()
-        if not clean:
-            return False, ""
+        clean = self.normalize_speech_text(transcript)
 
         # Phonetic match for jarvis / common variations
         wake_pattern = r'\b(?:hey|hi|hello|ok|okay|yo|please)?\s*(?:jarvisst|jarvist|jarvis|javis|jarvas|travis)\b'
         match = re.search(wake_pattern, clean, flags=re.IGNORECASE)
 
         if not match and "jarvis" not in clean:
+            # Check for direct actionable voice command intents
+            direct_triggers = [
+                "turn on", "turn off", "set temperature", "set the temperature",
+                "open spotify", "play spotify", "play music", "open youtube",
+                "open notepad", "open calculator", "open code", "open vscode",
+                "open brave", "open chrome", "open edge", "lock the door", "unlock the door",
+                "lock my pc", "lock the pc", "goodnight", "movie night", "it is freezing"
+            ]
+            if any(dt in clean for dt in direct_triggers):
+                return True, clean
+
             return False, ""
 
         # Strip wake-word prefix

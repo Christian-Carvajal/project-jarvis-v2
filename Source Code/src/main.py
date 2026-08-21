@@ -43,24 +43,12 @@ from src.voice_pipeline import VoicePipeline
 
 # Project and Directory paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-SEARCH_DIRS = [
-    CURRENT_DIR,
-    os.path.abspath(os.path.join(CURRENT_DIR, "..")),
-    os.path.abspath(os.path.join(CURRENT_DIR, "..", "..")),
-]
-for d in SEARCH_DIRS:
-    if d not in sys.path:
-        sys.path.insert(0, d)
-
-PROJECT_ROOT = CURRENT_DIR
-for d in SEARCH_DIRS:
-    if os.path.exists(os.path.join(d, "Execution Log")) or os.path.exists(os.path.join(d, "Source Code")):
-        PROJECT_ROOT = d
-        break
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) in ["src", "Source Code", "core"] else CURRENT_DIR
 
 EXEC_LOG_DIR = os.path.join(PROJECT_ROOT, "Execution Log")
 os.makedirs(EXEC_LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(EXEC_LOG_DIR, "assistant_execution.log")
+ROOT_LOG_FILE = os.path.join(PROJECT_ROOT, "assistant_execution.log")
 
 # Setup structured logger
 logging.basicConfig(
@@ -82,7 +70,7 @@ class JarvisVirtualAssistant:
     """
     Central Controller for JARVIS.
     Executes the Two-Turn Alternating Conversational State Machine:
-    Phase 1: STANDBY_WAKE_WORD (Listens for voice command / wake phrase)
+    Phase 1: STANDBY_WAKE_WORD (Listens for 'Hey Jarvis')
     Phase 2: ACTIVE_COMMAND (Listens directly for the follow-up command without requiring wake word)
     """
 
@@ -121,67 +109,78 @@ class JarvisVirtualAssistant:
         self.state_thread.start()
 
     def _ensure_log_header(self):
-        """Initializes structured logging file inside Execution Log."""
-        try:
-            os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-            if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
-                with open(LOG_FILE, "w", encoding="utf-8") as f:
-                    f.write("# APEX HOME AUTOMATIONS & STARK PC SUITE - JARVIS EXECUTION LOG\n")
-                    f.write("# Two-Turn Conversational State Machine & Pure Agentic LLM Reasoning\n\n")
-        except Exception:
-            pass
-
-    def _safe_gui(self, callback):
-        """Safely dispatches a UI update to Tkinter without crashing if mainloop is not active."""
-        if hasattr(self, 'gui') and self.gui:
+        """Initializes structured logging file across both Execution Log and root."""
+        for target_log in [LOG_FILE, ROOT_LOG_FILE]:
             try:
-                self.gui.after(0, callback)
+                os.makedirs(os.path.dirname(target_log), exist_ok=True)
+                if not os.path.exists(target_log) or os.path.getsize(target_log) == 0:
+                    with open(target_log, "w", encoding="utf-8") as f:
+                        f.write("# APEX HOME AUTOMATIONS & STARK PC SUITE - JARVIS EXECUTION LOG\n")
+                        f.write("# Two-Turn Conversational State Machine & Pure Agentic LLM Reasoning\n\n")
             except Exception:
-                try:
-                    callback()
-                except Exception:
-                    pass
+                pass
 
-    def reset_to_standby(self):
+    def _reset_to_standby(self):
         """Resets assistant to Standby listening state."""
-        self.state = AssistantState.STANDBY_WAKE_WORD
         self.is_processing = False
-        self._safe_gui(lambda: self.gui.update_status("Standby (Waiting for Command)", "#00E5FF"))
+        self.state = AssistantState.STANDBY_WAKE_WORD
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.after(0, lambda: self.gui.update_status("Standby (Waiting for 'Jarvis')", "#00E5FF"))
 
     def _state_machine_worker(self):
         """
-        Background Loop executing the Dual-Phase State Machine:
-        Phase 1: STANDBY (Continuous acoustic listen for wake word or direct wake+command)
-        Phase 2: ACTIVE (10-second open mic listening window)
+        Two-Turn State Machine Loop:
+        - PHASE 1: STANDBY_WAKE_WORD -> Listens for 'Hey Jarvis'
+        - PHASE 2: ACTIVE_COMMAND -> Listens for command WITHOUT wake word
         """
+        time.sleep(0.5)
+
         while self.is_running:
-            if not self.voice.is_listening:
+            if self.is_processing or self.voice.is_mic_muted:
                 time.sleep(0.1)
                 continue
 
             # =================================================================
-            # PHASE 1: STANDBY (Awaiting Voice Command)
+            # PHASE 1: STANDBY (Awaiting Wake Word)
             # =================================================================
             if self.state == AssistantState.STANDBY_WAKE_WORD:
-                self._safe_gui(lambda: self.gui.update_status("Standby (Waiting for Command)", "#00E5FF"))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.update_status("Standby (Waiting for 'Jarvis')", "#00E5FF"))
 
                 wake_detected, text = self.voice.listen_for_wake_word()
 
                 if wake_detected:
                     self.is_processing = True
-                    # If user spoke wake word + command, or natural prompt, send full query to LLM
-                    query_prompt = text.strip() if (text and len(text.strip()) >= 2) else "hey jarvis"
-                    self._safe_gui(lambda q=query_prompt: self.gui.log_console(f"⚡ VOICE INPUT: \"{q}\""))
-                    self._execute_command_pipeline(query_prompt)
-                    self.state = AssistantState.STANDBY_WAKE_WORD
-                    self.is_processing = False
+
+                    # Check if user spoke wake word + command all in one breath
+                    if text and len(text.strip()) >= 3:
+                        self.gui.after(0, lambda: self.gui.log_console(f"⚡ WAKE + COMMAND: \"{text.strip()}\""))
+                        self._execute_command_pipeline(text.strip())
+                        self.state = AssistantState.STANDBY_WAKE_WORD
+                        self.is_processing = False
+                    else:
+                        # User only said "Hey Jarvis" -> Speak ack & transition to ACTIVE_COMMAND
+                        ack_msg = "At your service, sir. What can I do for you?"
+                        print(f"[JARVIS Acknowledgment]: \"{ack_msg}\"")
+                        if hasattr(self, 'gui') and self.gui:
+                            self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{ack_msg}\""))
+                            self.gui.after(0, lambda: self.gui.update_status("Speaking Acknowledgment...", "#00E676"))
+
+                        def on_ack_done():
+                            self.state = AssistantState.ACTIVE_COMMAND
+                            self.is_processing = False
+
+                        self.voice.speak(ack_msg, callback=on_ack_done)
+                        # Small buffer to ensure TTS completes before active recording
+                        time.sleep(1.8)
 
             # =================================================================
             # PHASE 2: ACTIVE COMMAND (No Wake Word Required)
             # =================================================================
             elif self.state == AssistantState.ACTIVE_COMMAND:
-                self._safe_gui(lambda: self.gui.update_status("Listening for Command (10s)...", "#FFD700"))
-                self._safe_gui(lambda: self.gui.log_console("[ACTIVE] Listening for your command (waiting up to 10 seconds)..."))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.update_status("Listening for Command (10s)...", "#FFD700"))
+                    self.gui.after(0, lambda: self.gui.log_console("[ACTIVE] Listening for your command (waiting up to 10 seconds)..."))
 
                 command_text = self.voice.listen_raw_command(timeout=10.0)
 
@@ -192,7 +191,8 @@ class JarvisVirtualAssistant:
                     # 10-Second Timeout Fallback
                     timeout_msg = "Returning to standby, sir."
                     print(f"[ACTIVE TIMEOUT]: {timeout_msg}")
-                    self._safe_gui(lambda: self.gui.log_console(f"[TIMEOUT] No command heard within 10 seconds. {timeout_msg}"))
+                    if hasattr(self, 'gui') and self.gui:
+                        self.gui.after(0, lambda: self.gui.log_console(f"[TIMEOUT] No command heard within 10 seconds. {timeout_msg}"))
                     self.voice.speak(timeout_msg)
 
                 # Always reset back to standby after command execution or timeout
@@ -208,8 +208,9 @@ class JarvisVirtualAssistant:
         self.is_processing = True
 
         print(f"\n[PIPELINE START]: Processing prompt -> '{prompt}'")
-        self._safe_gui(lambda: self.gui.log_console(f"User Command: \"{prompt}\""))
-        self._safe_gui(lambda: self.gui.update_status(f"Reasoning ({self.ai.model_name})...", "#E040FB"))
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.after(0, lambda: self.gui.log_console(f"User Command: \"{prompt}\""))
+            self.gui.after(0, lambda: self.gui.update_status(f"Reasoning ({self.ai.model_name})...", "#E040FB"))
 
         # 1. Live Hardware Telemetry Injection & Pure LLM Intent Extraction
         live_summary = self.state_machine.get_summary_text()
@@ -221,10 +222,11 @@ class JarvisVirtualAssistant:
             print(f"[CHAIN-OF-THOUGHT REASONING]: {intent.reasoning}")
         print(f"[ACTIONS PLANNED]: {len(intent.actions)} action(s)")
 
-        self._safe_gui(lambda: self.gui.update_latency(latency_ms))
-        if intent.reasoning:
-            self._safe_gui(lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
-        self._safe_gui(lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.after(0, lambda: self.gui.update_latency(latency_ms))
+            if intent.reasoning:
+                self.gui.after(0, lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
+            self.gui.after(0, lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
 
         # 2. Dispatch Actions (Deduplicated Execution)
         state_transitions: List[str] = []
@@ -245,17 +247,20 @@ class JarvisVirtualAssistant:
                 msg = self.state_machine.apply_action(target, action_name, val)
                 state_transitions.append(msg)
                 print(f"  -> [Smart Home]: {target}.{action_name}({val}) | {msg}")
-                self._safe_gui(lambda m=msg: self.gui.log_console(f"⚡ {m}"))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda m=msg: self.gui.log_console(f"⚡ {m}"))
 
             # PC Desktop Automation Domain
             elif act.domain == "pc_automation":
                 pc_msg = PCAutomationEngine.execute_pc_action(target, action_name, val)
                 state_transitions.append(pc_msg)
                 print(f"  -> [PC Automation]: {pc_msg}")
-                self._safe_gui(lambda m=pc_msg: self.gui.log_console(f"⚡ {m}"))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda m=pc_msg: self.gui.log_console(f"⚡ {m}"))
 
         # 3. Refresh GUI state
-        self._safe_gui(self.gui.refresh_dashboard)
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.after(0, self.gui.refresh_dashboard)
 
         # 4. Spoken Response
         spoken = intent.spoken_response
@@ -290,16 +295,17 @@ class JarvisVirtualAssistant:
                         idx = spoken_clean.find(token) + len(token)
                         spoken_clean = spoken_clean[idx:].strip(' \t\n\r"\'{},[]')
                         found = True
-                    if not found:
-                        break
+                if not found:
+                    break
 
             spoken = spoken_clean.strip('{}[]"\' \t\n\r') if spoken_clean else "Command executed successfully, sir."
 
         print(f"[PIPELINE COMPLETE in {latency_ms:.1f}ms]: Spoken Response -> \"{spoken}\"")
 
-        self._safe_gui(lambda: self.gui.log_console(f"⏱️ LATENCY: {latency_ms:.1f} ms | Status: PROCESSED"))
-        self._safe_gui(lambda: self.gui.log_console(f"Jarvis: \"{spoken}\""))
-        self._safe_gui(lambda: self.gui.update_status("Speaking Response...", "#00E676"))
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.after(0, lambda: self.gui.log_console(f"⏱️ LATENCY: {latency_ms:.1f} ms | Status: PROCESSED"))
+            self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{spoken}\""))
+            self.gui.after(0, lambda: self.gui.update_status("Speaking Response...", "#00E676"))
 
         # Wait for TTS audio playback to completely finish before unmuting mic / returning to standby
         # This prevents the microphone from capturing speaker audio feedback and repeating commands
@@ -316,7 +322,7 @@ class JarvisVirtualAssistant:
             latency_ms=latency_ms
         )
 
-        self.reset_to_standby()
+        self._reset_to_standby()
         return spoken
 
     def handle_user_command(self, command_text: str) -> str:
@@ -340,22 +346,25 @@ class JarvisVirtualAssistant:
 
         def _voice_worker():
             self.is_processing = True
-            self._safe_gui(lambda: self.gui.update_status("Listening for Command (10s)...", "#00FF88"))
-            self._safe_gui(lambda: self.gui.log_console("🎙️ [LISTENING]: Microphone active — speak your command (waiting up to 10s)..."))
+            if hasattr(self, 'gui') and self.gui:
+                self.gui.after(0, lambda: self.gui.update_status("Listening for Command (10s)...", "#00FF88"))
+                self.gui.after(0, lambda: self.gui.log_console("🎙️ [LISTENING]: Microphone active — speak your command (waiting up to 10s)..."))
 
             command_text = self.voice.listen_raw_command(timeout=10.0)
 
             if command_text and len(command_text.strip()) >= 3:
-                self._safe_gui(lambda: self.gui.log_console(f"🎙️ [VOICE RECOGNIZED]: \"{command_text.strip()}\""))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.log_console(f"🎙️ [VOICE RECOGNIZED]: \"{command_text.strip()}\""))
                 self._execute_command_pipeline(command_text.strip())
             else:
                 msg = "No command detected, sir."
-                self._safe_gui(lambda: self.gui.log_console(f"Jarvis: \"{msg}\""))
-                self._safe_gui(lambda: self.gui.update_status("Standby (Waiting for Command)", "#00E5FF"))
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{msg}\""))
+                    self.gui.after(0, lambda: self.gui.update_status("Standby (Waiting for 'Jarvis')", "#00E5FF"))
                 self.voice.speak(msg)
                 self.is_processing = False
 
-            self.reset_to_standby()
+            self._reset_to_standby()
 
         threading.Thread(target=_voice_worker, daemon=True).start()
 
@@ -364,9 +373,10 @@ class JarvisVirtualAssistant:
         self.voice.halt_speech()
         self.is_processing = False
         self.state = AssistantState.STANDBY_WAKE_WORD
-        self._safe_gui(lambda: self.gui.log_console("🛑 [HALT]: Emergency speech and execution override triggered!"))
-        self._safe_gui(lambda: self.gui.update_status("🛑 HALTED", "#FF3366"))
-        self._safe_gui(lambda: self.gui.after(1000, self.reset_to_standby))
+        if hasattr(self, 'gui') and self.gui:
+            self.gui.log_console("🛑 [HALT]: Emergency speech and execution override triggered!")
+            self.gui.update_status("🛑 HALTED", "#FF3366")
+            self.gui.after(1000, self._reset_to_standby)
 
     def handle_mic_toggle(self) -> bool:
         """Toggles hardware microphone state."""
@@ -397,9 +407,13 @@ STATE TRANSITIONS: {transitions}
 EXECUTION LATENCY: {latency_ms:.2f} ms ({latency_ms/1000:.2f} s)
 ======================================================================
 """
-            os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-            with open(LOG_FILE, "a", encoding="utf-8") as f:
-                f.write(entry)
+            for target_log in [LOG_FILE, ROOT_LOG_FILE]:
+                try:
+                    os.makedirs(os.path.dirname(target_log), exist_ok=True)
+                    with open(target_log, "a", encoding="utf-8") as f:
+                        f.write(entry)
+                except Exception:
+                    pass
         except Exception as e:
             print(f"[Logging Error: {e}]")
 

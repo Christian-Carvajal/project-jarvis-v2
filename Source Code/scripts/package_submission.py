@@ -48,12 +48,11 @@ def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsa
                         print(f"  + Added: {rel_path}")
             elif item == "Prelim_Project_Report.pdf":
                 pdf_candidates = [
-                    os.path.join(PROJECT_ROOT, "..", "Project Documentation", "Prelim_Project_Report_Final.pdf"),
-                    os.path.join(PROJECT_ROOT, "..", "Project Documentation", "Prelim_Project_Report.pdf"),
-                    os.path.join(PROJECT_ROOT, "Project Documentation", "Prelim_Project_Report_Final.pdf"),
-                    os.path.join(PROJECT_ROOT, "reports", "Prelim_Project_Report_Final.pdf"),
                     os.path.join(PROJECT_ROOT, "Prelim_Project_Report_Final.pdf"),
-                    os.path.join(PROJECT_ROOT, "Prelim_Project_Report.pdf")
+                    os.path.join(PROJECT_ROOT, "test_report.pdf"),
+                    os.path.join(reports_dir, "Prelim_Project_Report_Final.pdf"),
+                    os.path.join(PROJECT_ROOT, "Prelim_Project_Report.pdf"),
+                    os.path.join(reports_dir, "Prelim_Project_Report.pdf")
                 ]
                 chosen = next((c for c in pdf_candidates if os.path.exists(c)), None)
                 if chosen:
@@ -61,18 +60,6 @@ def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsa
                     print(f"  + Added: Prelim_Project_Report.pdf (packaged from {os.path.basename(chosen)})")
                 else:
                     print(f"  [!] Warning: Missing 'Prelim_Project_Report.pdf'.")
-            elif item == "assistant_execution.log":
-                log_candidates = [
-                    os.path.join(PROJECT_ROOT, "..", "Execution Log", "assistant_execution.log"),
-                    os.path.join(PROJECT_ROOT, "Execution Log", "assistant_execution.log"),
-                    os.path.join(PROJECT_ROOT, "assistant_execution.log")
-                ]
-                chosen = next((c for c in log_candidates if os.path.exists(c)), None)
-                if chosen:
-                    zf.write(chosen, "assistant_execution.log")
-                    print(f"  + Added: assistant_execution.log (packaged from {os.path.basename(chosen)})")
-                else:
-                    print(f"  [!] Warning: Missing 'assistant_execution.log'.")
             else:
                 if os.path.exists(item_path):
                     zf.write(item_path, item)

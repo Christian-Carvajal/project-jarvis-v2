@@ -25,39 +25,28 @@ if (-not $pythonCheck) {
 Write-Host "[SYSTEM CHECK]: Found Python runtime ($($pythonCheck.Name))." -ForegroundColor Green
 
 # 2. Check if .venv exists
-$venvPython = ""
-if (Test-Path ".\Source Code\.venv\Scripts\python.exe") {
-    $venvPython = ".\Source Code\.venv\Scripts\python.exe"
-} elseif (Test-Path ".\.venv\Scripts\python.exe") {
-    $venvPython = ".\.venv\Scripts\python.exe"
-}
-
-if (-not $venvPython) {
+$venvPython = ".\.venv\Scripts\python.exe"
+if (-not (Test-Path $venvPython)) {
     Write-Host ""
     Write-Host "=======================================================" -ForegroundColor Yellow
     Write-Host "  FIRST-RUN INITIALIZATION: Provisioning Virtualenv" -ForegroundColor Yellow
     Write-Host "=======================================================" -ForegroundColor Yellow
     Write-Host "[1/3] Creating local virtual environment (.venv)..." -ForegroundColor Cyan
-    if (Test-Path ".\Source Code") {
-        & $pythonCheck.Name -m venv ".\Source Code\.venv"
-        $venvPython = ".\Source Code\.venv\Scripts\python.exe"
-        & $venvPython -m ensurepip --default-pip | Out-Null
-        & $venvPython -m pip install --upgrade pip | Out-Null
-        Write-Host "[3/3] Installing packages from Source Code/requirements.txt..." -ForegroundColor Cyan
-        & $venvPython -m pip install -r ".\Source Code\requirements.txt"
-    } else {
-        & $pythonCheck.Name -m venv ".\.venv"
-        $venvPython = ".\.venv\Scripts\python.exe"
-        & $venvPython -m ensurepip --default-pip | Out-Null
-        & $venvPython -m pip install --upgrade pip | Out-Null
-        Write-Host "[3/3] Installing packages from requirements.txt..." -ForegroundColor Cyan
-        & $venvPython -m pip install -r requirements.txt
-    }
+    python -m venv .venv
+
+    Write-Host "[2/3] Bootstrapping and upgrading pip package installer..." -ForegroundColor Cyan
+    & $venvPython -m ensurepip --default-pip | Out-Null
+    & $venvPython -m pip install --upgrade pip | Out-Null
+
+    Write-Host "[3/3] Installing all required AI, GUI, and Audio packages from requirements.txt..." -ForegroundColor Cyan
+    Write-Host "      (This may take 1-2 minutes on first run. Please wait...)" -ForegroundColor Yellow
+    Write-Host ""
+    & $venvPython -m pip install -r requirements.txt
     Write-Host "[SUCCESS]: Environment provisioned successfully!" -ForegroundColor Green
     Write-Host ""
 }
 
-# 3. Verify runtime dependencies
+# 3. Verify core runtime dependencies inside .venv
 & $venvPython -m pip --version | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[NOTICE]: Bootstrapping missing pip installer inside .venv..." -ForegroundColor Yellow
@@ -67,11 +56,7 @@ if ($LASTEXITCODE -ne 0) {
 $depCheck = & $venvPython -c "import pydantic, requests, PyQt6" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[NOTICE]: Installing missing dependencies..." -ForegroundColor Yellow
-    if (Test-Path ".\Source Code\requirements.txt") {
-        & $venvPython -m pip install -r ".\Source Code\requirements.txt"
-    } else {
-        & $venvPython -m pip install -r requirements.txt
-    }
+    & $venvPython -m pip install -r requirements.txt
 }
 
 # 4. Check Ollama AI daemon & model registration
@@ -88,11 +73,9 @@ if ($ollamaCheck) {
 
     $installedModels = & ollama list 2>&1
     if ($installedModels -notmatch "jarvis-trained-model") {
-        if (Test-Path ".\Source Code\models\jarvis-trained-model.gguf") {
+        if (Test-Path ".\models\jarvis-trained-model.gguf") {
             Write-Host "[OLLAMA SETUP]: Registering jarvis-trained-model from local GGUF..." -ForegroundColor Cyan
-            Push-Location ".\Source Code"
             & ollama create jarvis-trained-model -f Modelfile
-            Pop-Location
         } else {
             Write-Host "[OLLAMA SETUP]: Local GGUF not bundled. Auto-pulling base model qwen2.5:1.5b..." -ForegroundColor Cyan
             & ollama pull qwen2.5:1.5b
@@ -115,28 +98,20 @@ You are JARVIS, an autonomous AI smart home and desktop assistant. Parse the use
 ### Response:
 """
 "@
-            $autoModelfile | Out-File -FilePath ".\Source Code\Modelfile.auto" -Encoding utf8
-            Push-Location ".\Source Code"
+            $autoModelfile | Out-File -FilePath "Modelfile.auto" -Encoding utf8
             & ollama create jarvis-trained-model -f Modelfile.auto
             Remove-Item "Modelfile.auto" -Force -ErrorAction SilentlyContinue
-            Pop-Location
         }
     }
 } else {
     Write-Host "[OLLAMA NOTICE]: Ollama CLI not detected. Local GUI automation active." -ForegroundColor Yellow
 }
 
-# 5. Launch JARVIS AI Workstation
+# 4. Launch JARVIS AI Workstation
 Write-Host "[LAUNCH]: Starting JARVIS AI Workstation..." -ForegroundColor Green
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
-if (Test-Path ".\Source Code\main.py") {
-    Push-Location ".\Source Code"
-    & ".\.venv\Scripts\python.exe" main.py
-    Pop-Location
-} else {
-    & $venvPython main.py
-}
+& $venvPython main.py
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""

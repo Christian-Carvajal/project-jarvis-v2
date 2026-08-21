@@ -1,0 +1,29 @@
+# Python & Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large Model Weights & Archives
+*.gguf
+*.bin
+*.pt
+*.safetensors
+*.zip
+Jarvis*/
+checkpoint-*/
+
+# Audio scratch files (preserve code)
+scratch/
+test_*.wav
+temp_*.wav
+temp_*.mp3
+
+# IDE / System Settings
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -61,7 +61,8 @@ else
 fi
 
 # 4. Upgrade pip and install requirements
-echo "[2/3] Upgrading pip..."
+echo "[2/3] Bootstrapping & upgrading pip..."
+"$VENV_PY" -m ensurepip --default-pip --quiet 2>/dev/null || true
 "$VENV_PY" -m pip install --upgrade pip --quiet 2>/dev/null || true
 
 if [ -f "$REQ_FILE" ]; then
@@ -81,6 +82,42 @@ if command -v ollama >/dev/null 2>&1; then
         echo "[OLLAMA NOTICE]: Ollama service not running. Starting background daemon..."
         ollama serve >/dev/null 2>&1 &
         sleep 2
+    fi
+
+    # Ensure jarvis-trained-model is registered
+    if ! ollama list | grep -q "jarvis-trained-model"; then
+        if [ -f "$SCRIPT_DIR/Source Code/models/jarvis-trained-model.gguf" ]; then
+            echo "[OLLAMA SETUP]: Registering jarvis-trained-model from local GGUF..."
+            cd "$SCRIPT_DIR/Source Code"
+            ollama create jarvis-trained-model -f Modelfile
+            cd "$SCRIPT_DIR"
+        else
+            echo "[OLLAMA SETUP]: Local GGUF not bundled. Auto-pulling base model qwen2.5:1.5b..."
+            ollama pull qwen2.5:1.5b
+            cat << 'EOF' > "$SCRIPT_DIR/Source Code/Modelfile.auto"
+FROM qwen2.5:1.5b
+PARAMETER temperature 0.2
+PARAMETER top_p 0.95
+PARAMETER num_predict 512
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+PARAMETER stop "###"
+TEMPLATE """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+You are JARVIS, an autonomous AI smart home and desktop assistant. Parse the user request into structured JSON actions.
+
+### Input:
+{{ .Prompt }}
+
+### Response:
+"""
+EOF
+            cd "$SCRIPT_DIR/Source Code"
+            ollama create jarvis-trained-model -f Modelfile.auto
+            rm -f Modelfile.auto
+            cd "$SCRIPT_DIR"
+        fi
     fi
 else
     echo "[OLLAMA NOTICE]: Ollama CLI not detected in PATH. Ensure Ollama is installed."
