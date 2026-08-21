@@ -34,7 +34,19 @@ def run_comprehensive_e2e_tests():
     print("  ⚡ PROJECT JARVIS — UNIFIED SMART HOME & PC AUTOMATION E2E TEST SUITE", flush=True)
     print("=" * 75, flush=True)
 
-    log_file = os.path.join(PROJECT_ROOT, "assistant_execution.log")
+    search_dirs = [
+        PROJECT_ROOT,
+        os.path.abspath(os.path.join(PROJECT_ROOT, "..")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "..", "..")),
+    ]
+    root_dir = PROJECT_ROOT
+    for d in search_dirs:
+        if os.path.exists(os.path.join(d, "Execution Log")):
+            root_dir = d
+            break
+    exec_log_dir = os.path.join(root_dir, "Execution Log")
+    os.makedirs(exec_log_dir, exist_ok=True)
+    log_file = os.path.join(exec_log_dir, "assistant_execution.log")
     with open(log_file, "w", encoding="utf-8") as f:
         f.write("# APEX HOME AUTOMATIONS & STARK PC SUITE - JARVIS EXECUTION LOG\n")
         f.write("# Two-Turn Conversational State Machine & Pure Agentic LLM Reasoning\n\n")

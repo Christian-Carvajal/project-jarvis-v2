@@ -471,8 +471,20 @@ def build_prelim_report(output_pdf_path: str = "Prelim_Project_Report.pdf"):
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, "..")) if os.path.basename(current_dir) == "scripts" else current_dir
-    reports_dir = os.path.join(project_root, "reports")
+    source_root = os.path.abspath(os.path.join(current_dir, "..")) if os.path.basename(current_dir) == "scripts" else current_dir
+    project_root = os.path.abspath(os.path.join(source_root, "..")) if os.path.basename(source_root) == "Source Code" else source_root
+
+    reports_dir = os.path.join(source_root, "reports")
     os.makedirs(reports_dir, exist_ok=True)
     out_path = os.path.join(reports_dir, "Prelim_Project_Report.pdf")
     build_prelim_report(out_path)
+
+    doc_dir = os.path.join(project_root, "Project Documentation")
+    os.makedirs(doc_dir, exist_ok=True)
+    try:
+        import shutil
+        shutil.copy(out_path, os.path.join(doc_dir, "Prelim_Project_Report.pdf"))
+        shutil.copy(out_path, os.path.join(doc_dir, "Prelim_Project_Report_Final.pdf"))
+        print(f"[REPORT SUCCESS]: Copied report to '{doc_dir}'.")
+    except Exception as e:
+        print(f"[REPORT NOTICE]: {e}")

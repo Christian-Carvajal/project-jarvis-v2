@@ -1,170 +1,185 @@
-# PROJECT JARVIS v2 — Autonomous Agentic AI Workstation & Smart Automation Suite
+# APEX HOME AUTOMATIONS — ON-PREMISE AI VIRTUAL ASSISTANT (PROJECT JARVIS)
 
-> **Course:** BS Computer Science (3rd Year) — Artificial Intelligence (BSCS 3112 - 9420-AY126)  
-> **Institution:** University of Perpetual Help System DALTA (UPHSD) — Molino Campus  
-> **Faculty Lead / Professor:** Prof. Roberto L. Malitao  
-> **Development Team:**  
-> - **CARVAJAL, Christian Ezekiel L.** — AI Engine, State Machine & Command Automation Lead  
-> - **SARSALIJO, John Miko** — Voice STT/TTS & UI/UX Design Lead  
-
----
-
-## 📌 Executive Summary
-
-**Project JARVIS v2** is a 100% offline, local-first artificial intelligence workstation and smart home automation assistant. It features:
-1. **100% Pure Agentic AI Reasoning:** Zero hardcoded trigger rules, keyword dictionaries, or regex matchers. All natural language understanding, intent extraction, parameter resolution, and cross-domain tool selection are decided dynamically by local **Qwen 3.5 (2B Parameter Base / LoRA Fine-Tuned)** in strict Pydantic v2 JSON schemas.
-2. **Two-Turn Alternating Conversational State Machine:** Strict distinction between standby wake-word listening (`STATE_STANDBY_WAKE_WORD`) and direct command execution (`STATE_ACTIVE_COMMAND`) with 6-second timeout fallback.
-3. **Dynamic Universal PC Desktop Automation Engine:** 100% portable cross-PC automation (zero hardcoded file paths) capable of launching/closing applications, deep web searching (YouTube, Spotify, GitHub, Google), controlling system audio/media, and locking the workstation.
-4. **Apex Smart Home Simulator:** Real-time multi-device simulator (living room, kitchen, bedroom lights, thermostat, door lock, blinds, fan, security alarm, and entertainment unit).
-5. **Modern Dark Cyberpunk Dashboard:** Real-time HUD with live status telemetry, microphone toggle, emergency HALT override, console log stream, latency counter, and model switcher.
-
----
-
-## 🎓 Professor Roberto L. Malitao's Mandatory Directives
-
-| Requirement | Implementation & Architectural Guarantee |
+| **Project Metadata** | **Details** |
 | :--- | :--- |
-| **1. 100% Pure Agentic AI (No Hardcoded Commands)** | All user speech is forwarded directly to `ai_engine.parse_command(prompt)`. Local **Qwen 3.5 (2B)** computes multi-device action plans without any static regex or keyword matching. |
-| **2. Two-Turn Conversational State Machine** | **Turn 1:** User says *"Hey Jarvis"* $\rightarrow$ JARVIS replies: *"At your service, sir. What can I do for you?"* $\rightarrow$ Transitions to active mode.<br>**Turn 2:** User gives command directly without wake word $\rightarrow$ JARVIS executes & replies $\rightarrow$ Automatically resets to standby. |
-| **3. Strict Rubric Deliverables** | Preserved exact file structure: `main.py`, `src/voice_pipeline.py`, `src/ai_engine.py`, `src/home_simulator.py`, `assistant_execution.log`, and `Prelim_Project_Report.pdf`. |
-| **4. Sub-2.0s Real-Time Latency** | Optimized Whisper STT (Silero VAD 350ms trailing silence auto-slicing), VRAM-pinned Qwen 3.5 (2B) inference, and streaming TTS worker. |
-| **5. Strict Structured Audit Logging** | Every interaction generates an ISO 8601 timestamped record in `assistant_execution.log` containing raw transcriptions, validated JSON payloads, state transitions, and execution latency. |
+| **Course & Lesson** | Artificial Intelligence - Lab \| Lesson 3 – Prelim Mini-Project |
+| **Exam Title** | **PRELIM MINI PROJECT EXAM: AI-Powered Home Virtual Assistant** |
+| **Faculty Lead / Instructor** | **Prof. Rob Malitao** |
+| **Due Date** | **August 21, 2026** |
+| **Execution Environment** | **100% Software-Simulated Desktop Execution (Zero-Hardware)** |
+| **Student Engineers** | **JOHN MIKO SARSALIJO** (Lead GUI & Simulator Architect)<br>**CHRISTIAN EZEKIEL CARVAJAL** (Lead AI & Systems Architect) |
 
 ---
 
-## 🔄 Two-Turn Conversational State Machine Flow
+## 📌 1. Project Overview & Business Scenario
 
-```mermaid
-stateDiagram-v2
-    [*] --> STATE_STANDBY_WAKE_WORD
-    
-    state STATE_STANDBY_WAKE_WORD {
-        [*] --> Gating: Acoustic Passive Filter
-        Gating --> Discard: Non-wake speech (e.g., 'hello', 'good morning')
-        Gating --> WakeDetected: Hears 'Jarvis' / 'Hey Jarvis'
-    }
+**Apex Home Automations**, a consumer technology enterprise, is developing next-generation smart home hub software. Addressing consumer privacy concerns regarding always-on cloud listening devices (such as Amazon Alexa or Google Home), this prototype demonstrates an **on-premise, privacy-focused home virtual assistant (PROJECT JARVIS)** that operates **100% offline** on a desktop workstation.
 
-    WakeDetected --> SpeakAck: Spoken Reply ("At your service, sir. What can I do for you?")
-    SpeakAck --> STATE_ACTIVE_COMMAND: Status Yellow (#FFD700)
-
-    state STATE_ACTIVE_COMMAND {
-        [*] --> DirectListen: Silero VAD Capture (NO wake word needed)
-        DirectListen --> LLMReasoning: Raw speech captured
-        DirectListen --> Timeout: 6s Silence Detected
-    }
-
-    Timeout --> SpeakTimeout: "Returning to standby, sir."
-    SpeakTimeout --> STATE_STANDBY_WAKE_WORD: Status Cyan (#00E5FF)
-
-    LLMReasoning --> ActionPlan: Qwen 3.5 (2B) JSON Output
-    ActionPlan --> Dispatch: Smart Home + Dynamic PC Execution
-    Dispatch --> SpeakReply: Spoken Confirmation Response
-    SpeakReply --> STATE_STANDBY_WAKE_WORD: Status Cyan (#00E5FF)
-```
+### Core Architecture Highlights
+1. **100% Pure Local AI Reasoning (Zero Hardcoded Rules / Regex)**:
+   All natural language queries are parsed exclusively by the local fine-tuned Ollama model (`jarvis-trained-model` / Qwen 2.5/3.5:2B). The AI dynamically generates native `<think>...</think>` Chain-of-Thought reasoning and emits structured Pydantic v2 JSON action plans. Zero regular expressions or keyword dictionaries dictate system decisions.
+2. **Two-Turn Alternating Conversational State Machine**:
+   - **Phase 1 (Standby Mode)**: Listens passively for the wake phrase (`"Jarvis"`, `"Hey Jarvis"`) or direct wake-and-command phrases.
+   - **Phase 2 (Active Command Mode)**: Open-mic command capture window with automatic silence detection and timeout fallback.
+3. **Simulated Smart Home Dashboard & OS Desktop Automation**:
+   - **Smart Home Virtual State Machine**: Interactive visualization of multi-room lighting, climate thermostat with ambient physics, security deadbolts, motorized blinds, ceiling fans, entertainment units, and alarm systems.
+   - **Universal PC Desktop Automation**: Dynamically launches desktop applications, performs deep browser searches (YouTube, Google, Spotify), manages running processes, adjusts system volume, and locks the Windows workstation.
+4. **Offline Voice Processing Pipeline**:
+   High-speed Voice Activity Detection (VAD) audio buffering coupled with offline Text-to-Speech (TTS) synthesis and an emergency **HALT** button override.
 
 ---
 
-## ⚡ System Capabilities Matrix
-
-### 1. Smart Home Automation (`src/home_simulator.py`)
-- **Smart Lighting:** Living room, kitchen, and bedroom lights (`turn_on`, `turn_off`, `set_brightness`).
-- **Climate Control:** Thermostat (`set_temperature` with ambient thermal simulation).
-- **Security & Access:** Front door lock (`lock`, `unlock`) and security alarm (`arm`, `disarm`).
-- **Ambiance & Comfort:** Ceiling fan (`set_speed`), window blinds (`open`, `close`), and entertainment unit (`turn_on`, `turn_off`).
-
-### 2. Universal PC Desktop Automation (`src/ai_engine.py`)
-- **Dynamic Application Launcher:** Dynamically discovers and launches installed applications (Notepad, Calculator, Paint, Terminal, VS Code, Spotify, Brave, Chrome, Edge) via `shutil.which` and Start Menu registry scanning without hardcoded user paths.
-- **Process Management:** Gracefully closes or terminates running applications via `taskkill`.
-- **Deep Web Navigation & Search:** Automated browser search on Google, YouTube query search, Spotify web player, and developer portals.
-- **Native OS System Controls:** Hardware volume scaling, media playback toggling, workstation lock (`rundll32.exe user32.dll,LockWorkStation`), and screen capture.
-
-### 3. High-Precision Voice Pipeline (`src/voice_pipeline.py`)
-- **Native Sound Capture:** Direct `sounddevice` stream with automatic physical microphone hardware indexing.
-- **Silero VAD:** Auto-detects speech start and auto-slices audio after ~350ms of trailing silence.
-- **Domain-Conditioned Faster-Whisper:** High accuracy STT with initial prompt conditioning.
-- **British JARVIS TTS Engine:** Background worker thread with queue management and emergency **HALT** button override.
-
----
-
-## 🚀 Quickstart Guide
-
-### Prerequisites
-1. **Python 3.10 – 3.14** installed with PATH enabled.
-2. **Ollama AI Runtime** installed from [ollama.com](https://ollama.com).
-   ```bash
-   ollama pull qwen3.5:2b
-   ```
-
-### 1. Launch Project JARVIS
-```powershell
-# Activate local virtual environment
-.\.venv\Scripts\activate
-
-# Run main application
-python main.py
-```
-
-### 2. Run Comprehensive 18/18 E2E Test Suite
-```powershell
-python test_system_e2e.py
-```
-
-### 3. Build Submission Zip Package
-```powershell
-python package_submission.py Carvajal Sarsalijo
-```
-
----
-
-## 📁 Repository Structure
-
-```
-project-jarvis-v2/
-├── src/
-│   ├── __init__.py
-│   ├── main.py              # Two-Turn Conversational State Machine Coordinator
-│   ├── ai_engine.py         # 100% Agentic AI Engine (Ollama Qwen 2.5) & Dynamic PC Engine
-│   ├── voice_pipeline.py    # Whisper STT + Silero VAD + SoundDevice + British TTS Worker
-│   └── home_simulator.py    # Apex Smart Home State Machine & Dark Cyberpunk GUI Dashboard
-├── docs/
-│   ├── README.md            # Documentation Directory Index
-│   ├── handover.md          # Teammate & AI Assistant Handoff Guide
-│   ├── rules.md             # Antigravity AI Directives & Professor Mandates
-│   ├── setup.md             # Comprehensive Setup & Installation Guide
-│   ├── project_plan_and_status.md # Phase Milestones & Status
-│   ├── completed_task.md    # Detailed Task Execution History
-│   ├── demo_guide.md        # Academic Defense Demonstration Script & Q&A
-│   ├── skills.md            # Technology Stack Matrix
-│   ├── changelog.md         # Version Release Notes
-│   └── windows_teammate_guide.md # Windows Troubleshooting Guide
-├── assistant_execution.log  # Structured ISO 8601 Execution & Performance Log
-├── test_system_e2e.py       # Automated 18/18 E2E Verification Test Suite
-├── package_submission.py    # Automated Final Submission Packager
-├── Prelim_Project_Report.pdf# Academic Report & System Architecture Document
-├── requirements.txt         # Production Dependencies
-└── README.md                # Root Project Overview
-```
-
----
-
-## 📊 Verification Test Results
+## 📁 2. File and Directory Structure
 
 ```text
-===========================================================================
-  ⚡ PROJECT JARVIS — UNIFIED SMART HOME & PC AUTOMATION E2E TEST SUITE
-===========================================================================
-  [TEST SUITE 1]: 12/12 Wake / Non-Wake Acoustic Gating Tests Passed (100%)
-  [TEST SUITE 2]: 6/6 Agentic Semantic Reasoning Tests Passed (100%)
-  
-  OVERALL VERIFICATION RESULTS: 18/18 TESTS PASSED (100%)
-  LOGGING RECORD PERSISTED TO:  assistant_execution.log
-===========================================================================
+AI_PrelimExam_Group_Carvajal_Sarsalijo / Project-Jarvis-main/
+│
+├── Execution Log/
+│   └── assistant_execution.log        # Auto-generated ISO 8601 audit record (transcriptions, JSON, latency)
+│
+├── Project Documentation/
+│   └── Prelim_Project_Report_Final.pdf # Mandated 3-page academic report with architecture diagrams & metrics
+│
+├── Source Code/                       # Mandated /src and project implementation codebase
+│   ├── benchmarks/                    # LLM performance benchmarks and comparison logs
+│   ├── config/                        # Configuration settings and personality profiles
+│   ├── core/                          # Low-level system adapters and helper engines
+│   │   ├── action_engine.py           # PC automation driver execution
+│   │   ├── app_resolver.py            # Windows Start Menu & system process resolution
+│   │   ├── macro_engine.py            # Multi-action desktop macro scheduler
+│   │   ├── stt_engine.py              # Audio capture and speech-to-text adapter
+│   │   └── tts_engine.py              # Speech synthesis queue management
+│   ├── datasets/                      # Fine-tuning dataset JSONL records for local LLM
+│   ├── reports/                       # Generated report assets and build artifacts
+│   ├── scripts/                       # Automated submission packaging and PDF report generation
+│   │   ├── generate_report.py         # Automated ReportLab PDF generator
+│   │   └── package_submission.py      # Final zip deliverable packager
+│   ├── src/                           # Primary application modules
+│   │   ├── __init__.py                # Package initializer
+│   │   ├── ai_engine.py               # Pure Ollama LLM Reasoning Engine & Pydantic Schema Validator
+│   │   ├── home_simulator.py          # Virtual Smart Home Device State Machine & Modern HUD
+│   │   ├── main.py                    # Dual-Phase State Machine Controller & Event Coordinator
+│   │   └── voice_pipeline.py          # Acoustic Wake-Word Gating, VAD & Audio Stream Controller
+│   ├── tests/                         # Automated test verification suites
+│   │   ├── test_pc_navigation.py      # PC desktop automation test suite (14/14 tests)
+│   │   └── test_system_e2e.py         # End-to-end system verification suite (18/18 tests)
+│   ├── ui/                            # Cyberpunk Stark HUD window components
+│   ├── Modelfile                      # Ollama model definition and system instructions
+│   ├── jarvis_memory.db               # Local SQLite database for persistent memory
+│   ├── main.py                        # Root launcher redirecting to src/main.py
+│   └── requirements.txt               # Complete Python runtime package dependencies
+│
+├── requirements.sh                    # Shell setup and environment provisioning script
+├── run_jarvis.bat                     # Windows batch one-click auto-setup & launch script
+├── run_jarvis.ps1                     # PowerShell one-click setup & execution script
+├── run_jarvis.vbs                     # Silent windowless background launcher
+└── README.md                          # Root academic specification and user guide
 ```
 
 ---
 
-## 👥 Contributors & Contact
+## ⚡ 3. Detailed Component & Function Breakdown
 
-- **Christian Ezekiel L. Carvajal** — AI Engine, State Machine Architecture & PC Automation (`christianezekielcarvajalgithub@gmail.com`)
-- **John Miko Sarsalijo** — Voice Pipeline, STT/TTS Engineering & UI/UX (`johnmikosarsalijo@gmail.com`)
-- **Faculty Advisor:** Prof. Roberto L. Malitao (UPHSD Molino Campus)
+### A. `Source Code/src/ai_engine.py` (AI Intent Extraction & JSON Parsing)
+- **`AIEngine.parse_command(prompt)`**:
+  Constructs the inference payload and sends the user query to the local Ollama API (`http://127.0.0.1:11434/api/chat`) running `jarvis-trained-model`.
+- **`AIEngine._extract_reasoning_and_json(raw_content, thinking_content)`**:
+  Extracts the raw `<think>...</think>` Chain-of-Thought reasoning tokens and cleanly isolates the JSON payload without regex interception.
+- **`AssistantIntentResponse` (Pydantic v2 Model)**:
+  Validates the returned JSON against strict schema definitions:
+  - `spoken_response`: Human-readable dialogue spoken by JARVIS.
+  - `actions`: List of `DeviceAction` objects with `domain`, `device_or_target`, `action`, and `value`.
+  - `reasoning`: Chain-of-Thought explanation generated by the model.
+  - `interpreted_intent`: High-level intent category (`agentic_action_plan`, `conversational_dialogue`, `device_status_query`).
+- **`PCAutomationEngine`**:
+  Executes OS-level automation including `open_app`, `close_app`, `open_website`, `play_music` (Spotify/YouTube), `media_control`, `volume_control`, and `lock_pc`.
+
+### B. `Source Code/src/home_simulator.py` (Simulated Smart Home Dashboard)
+- **`SmartHomeStateMachine`**:
+  Maintains the authoritative state of 9 simulated smart devices:
+  1. `living_room_light` (SmartLight - On/Off, Brightness 0-100%)
+  2. `kitchen_light` (SmartLight - On/Off, Brightness 0-100%)
+  3. `bedroom_light` (SmartLight - On/Off, Brightness 0-100%)
+  4. `thermostat` (SmartThermostat - Target Temp 16-30°C, Ambient Simulation)
+  5. `front_door_lock` (SmartLock - Locked/Unlocked)
+  6. `ceiling_fan` (SmartFan - Off/Low/Medium/High)
+  7. `window_blinds` (SmartBlinds - Open/Closed)
+  8. `entertainment_unit` (EntertainmentUnit - Off/Active/Streaming)
+  9. `security_alarm` (SecurityAlarm - Disarmed/Armed/Triggered)
+- **`ModernHomeDashboard` (GUI)**:
+  Dark Cyberpunk visual interface displaying live device status cards, interactive toggle buttons, console stream, latency gauge, model selector, microphone mute toggle, and emergency **HALT** button.
+
+### C. `Source Code/src/voice_pipeline.py` (Voice & Speech Processing Pipeline)
+- **`VoicePipeline.listen_for_wake_word()`**:
+  Continuous acoustic listening stream using hardware microphone indexing and energy thresholding to detect wake words (`"Jarvis"`, `"Hey Jarvis"`) and compound commands.
+- **`VoicePipeline.listen_raw_command(timeout=10.0)`**:
+  Captures follow-up speech commands in active mode with Silero VAD silence truncation.
+- **`VoicePipeline.speak(text, callback)`**:
+  Asynchronous offline speech synthesis using `pyttsx3` with queue management and immediate interrupt support.
+
+### D. `Source Code/src/main.py` (Dual-Phase State Coordinator)
+- **`JarvisVirtualAssistant`**:
+  Central controller executing the Two-Turn state machine, coordinating the voice listener thread, passing transcribed text to the AI engine, dispatching action lists to the simulator and desktop engines, updating HUD telemetry, and writing structured ISO 8601 logs to `Execution Log/assistant_execution.log`.
+
+---
+
+## 📋 4. Rubric & Evaluation Standards
+
+| Evaluation Criteria | Weight | Required Standard | Project Implementation |
+| :--- | :---: | :--- | :--- |
+| **Voice & Speech Processing Pipeline** | **25%** | Audio capture, STT, and TTS function seamlessly with minimal latency (<2s) and clear audio feedback. | Native SoundDevice capture, high-speed speech-to-text, offline British JARVIS TTS synthesis, and 2-stage acoustic wake-word gating. |
+| **AI Intent Extraction & JSON Parsing** | **30%** | Local Qwen model accurately extracts intent and parameters from ambiguous commands; valid JSON matching schema. | Pure Ollama LLM reasoning (`jarvis-trained-model`) with native `<think>` CoT extraction, Pydantic v2 validation, and dynamic parameter resolution. |
+| **Simulated Smart-Home GUI** | **20%** | Visually dynamic UI (Tkinter/Pygame) clearly reflecting real-time state changes based on AI output. | Modern Cyberpunk HUD with real-time card toggles, animated status indicators, console log feed, latency metrics, and hardware override buttons. |
+| **Code Architecture & Documentation** | **15%** | Modular OOP design (`main.py`, `ai_engine.py`, `home_simulator.py`, `voice_pipeline.py`), PEP-8 compliance, robust error handling. | Decoupled, modular architecture adhering to PEP-8 standards with comprehensive docstrings and clean separation of concerns. |
+| **Report & Live Demonstration** | **10%** | Complete PDF report with architecture diagram, task division matrix, and live demo execution. | 3-page academic report with architecture diagrams, peak resource benchmarks (CPU/RAM/VRAM), task division matrix, and automated test suite. |
+
+---
+
+## 🚀 5. Quickstart & Verification Guide
+
+### Step 1: Launch the Assistant
+- **Windows (Batch)**: Double-click `run_jarvis.bat`.
+- **Windows (PowerShell)**: Execute `.\run_jarvis.ps1`.
+- **Bash / Git Bash / Linux / WSL**: Run `./requirements.sh`.
+
+The launcher automatically provisions the Python virtual environment, installs dependencies, verifies Ollama, and opens the JARVIS Cyberpunk HUD.
+
+### Step 2: Test via Voice or Text
+- **Voice**: Speak *"Hey Jarvis, turn on the living room light and set the temperature to 24 degrees."*
+- **Text Command Bar**: Type *"It is freezing and dark in here"* or *"Open YouTube and search for classical music"*.
+
+### Step 3: Run Automated Verification Test Suites
+```powershell
+# Run the complete System E2E Test Suite
+& ".\Source Code\.venv\Scripts\python.exe" "Source Code\tests\test_system_e2e.py"
+
+# Run the PC Navigation Test Suite
+& ".\Source Code\.venv\Scripts\python.exe" "Source Code\tests\test_pc_navigation.py"
+```
+
+### Step 4: Inspect Execution Audit Logs
+Open `Execution Log/assistant_execution.log` to inspect the complete ISO 8601 audit records containing timestamps, transcribed text, LLM JSON payloads, state transitions, and inference latency.
+
+---
+
+## 👥 6. Academic Project Team & Task Division Matrix
+
+```text
++-------------------------------------------------------------------------------+
+|                      APEX HOME AUTOMATIONS — PROJECT JARVIS                   |
++-----------------------------------+-------------------------------------------+
+| Student Engineer                  | Primary Responsibilities & Modules        |
++-----------------------------------+-------------------------------------------+
+| CHRISTIAN EZEKIEL CARVAJAL        | • Pure Agentic AI Engine (ai_engine.py)   |
+| (Lead AI & Systems Architect)     | • Ollama LoRA Fine-Tuning & Prompt Tuning |
+|                                   | • Universal PC Automation Engine          |
+|                                   | • System Architecture & End-to-End Tests  |
++-----------------------------------+-------------------------------------------+
+| JOHN MIKO SARSALIJO               | • Modern Cyberpunk HUD (home_simulator.py)|
+| (Lead GUI & Simulator Architect)  | • Smart Home Device State Machine         |
+|                                   | • Voice Pipeline STT/TTS (voice_pipeline) |
+|                                   | • Academic Documentation & UI Assets      |
++-----------------------------------+-------------------------------------------+
+| Faculty Lead / Instructor: Prof. Rob Malitao (August 21, 2026)                |
++-------------------------------------------------------------------------------+
+```
