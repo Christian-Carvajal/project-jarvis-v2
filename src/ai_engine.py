@@ -7,10 +7,12 @@ All intent classification, tool selection, and parameter extraction are decided 
 
 import os
 import sys
+import re
 import time
 import json
 import shutil
 import subprocess
+import threading
 import webbrowser
 import urllib.parse
 from typing import List, Optional, Any, Dict, Tuple
@@ -21,6 +23,7 @@ import ollama
 
 try:
     import pyautogui
+    import pyperclip
     PYAUTOGUI_AVAILABLE = True
     pyautogui.FAILSAFE = False
 except ImportError:
@@ -29,9 +32,16 @@ except ImportError:
 try:
     import win32api
     import win32con
+    import win32gui
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
+
+try:
+    from rapidfuzz import process, fuzz
+    RAPIDFUZZ_AVAILABLE = True
+except ImportError:
+    RAPIDFUZZ_AVAILABLE = False
 
 DEFAULT_MODEL = "jarvis-trained-model"
 CUSTOM_MODEL_CANDIDATES = ["jarvis-trained-model"]
@@ -50,8 +60,8 @@ class DeviceAction(BaseModel):
         if not isinstance(values, dict):
             return values
 
-        # Extract target from various candidate fields
-        target = str(
+        # Extract raw target from various candidate fields
+        raw_target = str(
             values.get("device_or_target")
             or values.get("target")
             or values.get("device")
@@ -62,10 +72,13 @@ class DeviceAction(BaseModel):
             or values.get("name")
             or values.get("software")
             or values.get("website")
+            or values.get("service")
+            or values.get("browser")
+            or values.get("url")
             or ""
         ).lower().strip()
 
-        # Extract action name from various candidate fields
+        # Extract raw action name from various candidate fields
         act = str(
             values.get("action")
             or values.get("act")
@@ -77,76 +90,173 @@ class DeviceAction(BaseModel):
 
         domain = str(values.get("domain") or "").lower().strip()
         val = values.get("value") if values.get("value") is not None else (
-            values.get("val") or values.get("param") or values.get("parameter") or values.get("query") or values.get("temp") or values.get("temperature") or values.get("brightness")
+            values.get("val") or values.get("param") or values.get("parameter") or values.get("query") or values.get("song") or values.get("track") or values.get("artist") or values.get("temp") or values.get("temperature") or values.get("brightness")
         )
+
+        target = raw_target
+
+        # 1. URL handling: If target or value is a URL, resolve canonical PC target
+        for candidate_url in [raw_target, str(val) if val else ""]:
+            if candidate_url.startswith("http://") or candidate_url.startswith("https://") or "www." in candidate_url:
+                c_low = candidate_url.lower()
+                if "spotify.com" in c_low:
+                    target = "spotify"
+                    domain = "pc_automation"
+                    act = "open_app" if not act or act in ["turn_on", "launch", "open", "launchapp"] else act
+                    if "/search/" in c_low:
+                        q_part = c_low.split("/search/")[-1].split("?")[0]
+                        val = urllib.parse.unquote(q_part).strip() if q_part else None
+                        act = "play_music"
+                    elif val == candidate_url:
+                        val = None
+                    break
+                elif "youtube.com" in c_low or "youtu.be" in c_low:
+                    target = "youtube"
+                    domain = "pc_automation"
+                    act = "open_website"
+                    if "search_query=" in c_low:
+                        q_part = c_low.split("search_query=")[-1].split("&")[0]
+                        val = urllib.parse.unquote(q_part).strip() if q_part else None
+                    elif val == candidate_url:
+                        val = None
+                    break
+                elif "discord.com" in c_low or "discord.gg" in c_low:
+                    target = "discord"
+                    domain = "pc_automation"
+                    act = "open_app"
+                    val = None
+                    break
+                elif "google.com" in c_low:
+                    if "?q=" in c_low or "&q=" in c_low:
+                        q_part = (c_low.split("?q=")[-1] if "?q=" in c_low else c_low.split("&q=")[-1]).split("&")[0]
+                        val = urllib.parse.unquote(q_part).strip()
+                        target = "browser"
+                        domain = "pc_automation"
+                        act = "web_search"
+                    else:
+                        target = "chrome"
+                        domain = "pc_automation"
+                        act = "open_app"
+                        val = None
+                    break
+                elif "github.com" in c_low:
+                    target = "github"
+                    domain = "pc_automation"
+                    act = "open_website"
+                    val = "https://github.com"
+                    break
+                elif "canvas" in c_low:
+                    target = "canvas"
+                    domain = "pc_automation"
+                    act = "open_website"
+                    val = "https://canvas.instructure.com"
+                    break
+                else:
+                    target = "browser"
+                    domain = "pc_automation"
+                    act = "open_website"
+                    val = candidate_url
+                    break
 
         pc_targets = [
             "youtube", "spotify", "google", "github", "canvas", "browser", "chrome", "edge", "brave",
             "firefox", "notepad", "calculator", "calc", "paint", "mspaint", "terminal", "cmd", "powershell",
-            "explorer", "file_explorer", "vscode", "code", "task_manager", "lock_pc", "web_search",
-            "discord", "steam", "volume", "media", "screenshot"
+            "explorer", "file_explorer", "vscode", "code", "vs_code", "task_manager", "taskmgr", "lock_pc", "web_search",
+            "discord", "steam", "volume", "media", "screenshot", "system"
         ]
-        pc_actions = ["open_app", "close_app", "open_website", "system_control", "web_search", "media_control", "launch", "open", "close", "kill", "search", "play_music"]
+        pc_actions = ["open_app", "close_app", "open_website", "system_control", "web_search", "media_control", "launch", "open", "close", "kill", "search", "play_music", "play_song", "play"]
 
-        # Infer target from action or value if target is missing
+        # 2. Extract target embedded inside action name (e.g. "openSpotify" -> "spotify", "openSteam" -> "steam")
+        if not target or target in ["device", "target", "entity", "room", "light", "app", "system", "living_room_light"]:
+            for pt in pc_targets:
+                if pt in act and pt not in ["media", "system"]:
+                    target = pt
+                    break
+
+        # 3. Handle music and playback actions (e.g. "play_song", "play_music", "play music", "stream")
+        if any(k in act for k in ["play_song", "play_music", "play music", "listen", "stream"]) or (act == "play" and (not target or target in ["spotify", "music", "song", "media"])):
+            domain = "pc_automation"
+            if not target or target in ["device", "target", "entity", "room", "light", "app", "system", "living_room_light", "music", "song", "media"]:
+                target = "spotify"
+            act = "play_music"
+            if val and str(val).lower().strip() in ["something", "music", "some music", "a song", "song", "tracks", "unknown", "none", "null"]:
+                val = None
+
+        # 4. Infer target from value if target is missing
         if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
             if val and isinstance(val, str):
                 v_low = val.lower().strip()
-                if any(pt in v_low for pt in pc_targets):
-                    target = v_low
-                    val = None
-                elif any(st in v_low for st in ["kitchen", "bedroom", "living", "thermostat", "door", "lock", "fan", "blind"]):
-                    target = v_low
-                    val = None
-            if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
                 for pt in pc_targets:
-                    if pt in act:
+                    if pt == v_low or (pt in v_low and len(pt) >= 4):
                         target = pt
+                        val = None
                         break
                 if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
-                    if any(k in act for k in ["unlock", "lock", "door", "front_door", "deadbolt"]):
-                        target = "front_door_lock"
-                    elif any(k in act for k in ["temp", "temperature", "thermostat", "climate", "ac", "cool", "heat", "warm", "hot", "cold", "freeze"]):
-                        target = "thermostat"
-                    elif any(k in act for k in ["fan", "ceiling"]):
-                        target = "ceiling_fan"
-                    elif any(k in act for k in ["blind", "blinds", "window", "curtain"]):
-                        target = "window_blinds"
-                    elif any(k in act for k in ["entertainment", "tv", "television", "theater", "display"]):
-                        target = "entertainment_unit"
-                    elif "kitchen" in act:
-                        target = "kitchen_light"
-                    elif "bedroom" in act:
-                        target = "bedroom_light"
-                    elif "living" in act:
-                        target = "living_room_light"
-                    elif any(k in act for k in ["all_lights", "all lights"]):
-                        target = "all_lights"
+                    if any(st in v_low for st in ["kitchen", "bedroom", "living room", "livingroom", "thermostat", "front door", "ceiling fan"]):
+                        target = v_low
+                        val = None
+
+        # 5. Smart Home entity fallbacks (only if not a PC target or music action)
+        if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
+            if any(k in act for k in ["unlock", "lock"]) and not any(k in act for k in ["pc", "workstation"]):
+                target = "front_door_lock"
+            elif any(k in act for k in ["temp", "temperature", "thermostat", "climate", "ac", "cool", "heat", "warm", "freeze"]):
+                target = "thermostat"
+            elif any(k in act for k in ["fan", "ceiling"]):
+                target = "ceiling_fan"
+            elif any(k in act for k in ["blind", "blinds", "curtain"]) and not any(k in act for k in ["music", "song", "play"]):
+                target = "window_blinds"
+            elif any(k in act for k in ["entertainment", "tv", "television", "theater", "display"]):
+                target = "entertainment_unit"
+            elif "kitchen" in act:
+                target = "kitchen_light"
+            elif "bedroom" in act:
+                target = "bedroom_light"
+            elif "living" in act:
+                target = "living_room_light"
+            elif any(k in act for k in ["all_lights", "all lights"]):
+                target = "all_lights"
 
         # Normalize target string
         target_norm = target.replace(" ", "_").replace("-", "_")
         if "notepad.exe" in target_norm or "notepad" in target_norm:
             target_norm = "notepad"
             target = "notepad"
-        elif "calc.exe" in target_norm or "calculator" in target_norm:
+        elif "calc.exe" in target_norm or target_norm in ["calculator", "calc", "calculatorapp"]:
             target_norm = "calculator"
             target = "calculator"
+        elif target_norm in ["vs_code", "vscode", "code.exe"]:
+            target_norm = "vscode"
+            target = "vscode"
+        elif target_norm in ["taskmgr", "task_manager", "taskmanager"]:
+            target_norm = "task_manager"
+            target = "task_manager"
+        elif target_norm in ["file_explorer", "explorer", "explorer.exe"]:
+            target_norm = "explorer"
+            target = "explorer"
+        elif target_norm in ["google_chrome", "chrome.exe"]:
+            target_norm = "chrome"
+            target = "chrome"
+        elif target_norm in ["microsoft_edge", "msedge", "edge.exe"]:
+            target_norm = "edge"
+            target = "edge"
+        elif target_norm in ["brave_browser", "brave.exe"]:
+            target_norm = "brave"
+            target = "brave"
 
-        # Automatically route climate and temperature entities to smart_home thermostat
-        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or any(k in act for k in ["set_temperature", "set temperature", "warm", "cool", "cooldown"]):
+        # Route domain correctly
+        if any(pt in target_norm for pt in pc_targets) or act in pc_actions or any(pt in act for pt in pc_targets):
+            domain = "pc_automation"
+        elif any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or any(k in act for k in ["set_temperature", "set temperature", "warm", "cool", "cooldown"]):
             domain = "smart_home"
             target = "thermostat"
-
-        # Automatically route entertainment entities to smart_home entertainment_unit
-        if any(k in target_norm for k in ["entertainment", "tv", "television", "theater", "display"]):
+        elif any(k in target_norm for k in ["entertainment", "tv", "television", "theater", "display"]):
             domain = "smart_home"
             target = "entertainment_unit"
-
-        if not domain:
-            if any(pt in target_norm for pt in pc_targets) or act in pc_actions or any(pt in act for pt in pc_targets):
-                domain = "pc_automation"
-            else:
-                domain = "smart_home"
+        elif any(k in target_norm for k in ["kitchen", "bedroom", "living", "light", "door", "lock", "fan", "blind", "alarm"]):
+            domain = "smart_home"
+        elif not domain:
+            domain = "smart_home"
 
         if domain == "smart_home":
             if "kitchen" in target_norm:
@@ -172,7 +282,7 @@ class DeviceAction(BaseModel):
             elif target_norm:
                 target = target_norm
 
-            # Normalize action strings
+            # Normalize action strings for smart home
             if any(k in act for k in ["turnoff", "turn_off", "turn off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken", "off"]):
                 act = "turn_off"
             elif any(k in act for k in ["turnon", "turn_on", "turn on", "activate", "enable", "illuminate", "on"]):
@@ -193,17 +303,21 @@ class DeviceAction(BaseModel):
                 act = "turn_on" if target == "entertainment_unit" else "open"
         else:
             # PC Automation domain action normalization
-            if any(k in act for k in ["open", "launch", "start", "run"]):
-                if any(k in target for k in ["youtube", "github", "google", "canvas", "browser", "website"]):
+            if any(k in act for k in ["open", "launch", "start", "run", "turn_on", "turn on", "activate", "enable", "open_app", "openapp"]):
+                if any(k in target for k in ["youtube", "github", "google", "canvas", "website"]):
+                    act = "open_website"
+                elif target == "browser" and val and (str(val).startswith("http") or "www." in str(val)):
                     act = "open_website"
                 else:
                     act = "open_app"
-            elif any(k in act for k in ["close", "kill", "terminate", "exit", "stop"]):
+            elif any(k in act for k in ["close", "kill", "terminate", "exit", "stop", "turn_off", "turn off", "shut", "close_app"]):
                 act = "close_app"
-            elif any(k in act for k in ["search", "query"]):
+            elif any(k in act for k in ["search", "query", "web_search"]):
                 act = "open_website" if "youtube" in target else "web_search"
-            elif any(k in act for k in ["play", "stream", "listen"]):
+            elif any(k in act for k in ["play", "stream", "listen", "play_music", "play_song"]):
                 act = "play_music" if target == "spotify" else "open_website"
+            elif target == "lock_pc" or ("lock" in act and "pc" in target):
+                act = "lock_pc" if act == "lock_pc" else "system_control"
 
         values["domain"] = domain
         values["device_or_target"] = target if target else ("browser" if domain == "pc_automation" else "living_room_light")
@@ -241,7 +355,21 @@ class AssistantIntentResponse(BaseModel):
 
         # Check for multi-action routines and explicit intents in raw_prompt
         if raw_p:
-            if any(w in raw_p for w in ["goodnight", "going to bed", "sleep mode", "bed time"]):
+            # 0. Conversational Chit-Chat / Standby (Zero Physical Action Execution)
+            if any(w in raw_p for w in ["how are you", "who are you", "who created you", "thank you", "thanks for your help", "thanks", "what is your name", "what can you do"]):
+                values["actions"] = []
+                if "who" in raw_p or "created" in raw_p:
+                    values["spoken_response"] = "I am JARVIS, an autonomous AI smart home and desktop assistant created by Christian Ezekiel Carvajal and John Miko Sarsalijo."
+                elif "thank" in raw_p or "thanks" in raw_p:
+                    values["spoken_response"] = "You are most welcome, sir. Always a pleasure to assist."
+                elif "how are you" in raw_p:
+                    values["spoken_response"] = "All systems are operating at peak efficiency, sir. Ready for your instructions."
+                else:
+                    values["spoken_response"] = "I am at your service, sir. What can I do for you?"
+                values["interpreted_intent"] = "conversational_dialogue"
+                return values
+
+            if any(w in raw_p for w in ["goodnight", "going to bed", "sleep mode", "bed time", "heading to sleep", "going to sleep", "time for bed"]):
                 values["actions"] = [
                     {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_off"},
                     {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_off"},
@@ -249,6 +377,42 @@ class AssistantIntentResponse(BaseModel):
                 ]
                 values["spoken_response"] = "Goodnight, sir. All lights are powered down and the perimeter is secured."
                 values["interpreted_intent"] = "routine_goodnight"
+                return values
+
+            elif any(w in raw_p for w in ["lock my computer", "lock the computer", "lock my pc", "lock the pc", "lock pc", "lock workstation", "lock the workstation", "lock screen"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"}
+                ]
+                values["spoken_response"] = "Workstation locked, sir."
+                values["interpreted_intent"] = "pc_automation_lock"
+                return values
+
+            elif "kitchen" in raw_p and ("light" in raw_p or "lamp" in raw_p):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "darken", "deactivate"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "kitchen_light", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Turning off the kitchen light, sir."
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "kitchen_light", "action": "turn_on", "value": 100}
+                    ]
+                    values["spoken_response"] = "Illuminating the kitchen light, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif "bedroom" in raw_p and ("light" in raw_p or "lamp" in raw_p):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "darken", "deactivate"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Turning off the bedroom light, sir."
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_on", "value": 100}
+                    ]
+                    values["spoken_response"] = "Illuminating the bedroom light, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
                 return values
 
             elif any(w in raw_p for w in ["movie night", "movie mode", "cinema mode"]):
@@ -383,6 +547,182 @@ class AssistantIntentResponse(BaseModel):
                 ]
                 values["spoken_response"] = "Locking workstation and securing the front door, sir."
                 values["interpreted_intent"] = "compound_dual_domain"
+                return values
+
+            # -----------------------------------------------------------------
+            # SPOTIFY INTENTS
+            # -----------------------------------------------------------------
+            elif "spotify" in raw_p:
+                if any(w in raw_p for w in ["open", "launch", "start", "run", "go to"]) and not any(w in raw_p for w in ["play", "listen", "stream", "search"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "spotify", "action": "open_app", "value": None}
+                    ]
+                    values["spoken_response"] = "Launching Spotify application, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
+                elif any(w in raw_p for w in ["close", "exit", "kill", "terminate", "stop"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "spotify", "action": "close_app", "value": None}
+                    ]
+                    values["spoken_response"] = "Closing Spotify, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
+                else:
+                    # Play / search query extraction
+                    clean_q = raw_p
+                    clean_q = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:open\s+(?:my\s+)?spotify\s+(?:and\s+)?(?:play\s+)?|launch\s+spotify\s+and\s+play\s+)', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:play|listen\s+to|stream|put\s+on)\s+', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'\s+(?:on|in|from)\s+(?:my\s+)?spotify.*$', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = re.sub(r'^(?:on|in)\s+spotify\s+', '', clean_q, flags=re.IGNORECASE)
+                    clean_q = clean_q.strip()
+
+                    if not clean_q or clean_q.lower() in ["something", "music", "some music", "a song", "song", "tracks", "anything", "spotify"]:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": None}
+                        ]
+                        values["spoken_response"] = "Resuming music playback on Spotify, sir."
+                    else:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": clean_q}
+                        ]
+                        values["spoken_response"] = f"Playing '{clean_q.title()}' on Spotify, sir."
+                    values["interpreted_intent"] = "pc_automation_spotify"
+                    return values
+
+            # Generic music playback without explicit "spotify" keyword
+            elif any(w in raw_p for w in ["play some music", "play music", "play a song", "play songs", "resume music", "listen to music"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "spotify", "action": "play_music", "value": None}
+                ]
+                values["spoken_response"] = "Resuming music playback on Spotify, sir."
+                values["interpreted_intent"] = "pc_automation_spotify"
+                return values
+
+            # -----------------------------------------------------------------
+            # YOUTUBE INTENTS
+            # -----------------------------------------------------------------
+            elif "youtube" in raw_p or "you tube" in raw_p or raw_p.startswith("open yt") or raw_p.startswith("launch yt"):
+                if any(w in raw_p for w in ["open", "launch", "go to", "start"]) and not any(w in raw_p for w in ["play", "search", "watch", "find"]):
+                    values["actions"] = [
+                        {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": None}
+                    ]
+                    values["spoken_response"] = "Opening YouTube homepage, sir."
+                    values["interpreted_intent"] = "pc_automation_youtube"
+                    return values
+                else:
+                    # Query extraction
+                    clean_yt = raw_p
+                    clean_yt = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:open\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?|launch\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?)', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'^(?:play|watch|search\s+(?:for\s+)?)\s+', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = re.sub(r'\s+(?:on|in)\s+you\s*tube.*$', '', clean_yt, flags=re.IGNORECASE)
+                    clean_yt = clean_yt.strip()
+
+                    if not clean_yt or clean_yt.lower() in ["something", "a video", "video", "videos", "anything", "youtube", "you tube", "yt"]:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": None}
+                        ]
+                        values["spoken_response"] = "Opening YouTube, sir."
+                    else:
+                        values["actions"] = [
+                            {"domain": "pc_automation", "device_or_target": "youtube", "action": "open_website", "value": clean_yt}
+                        ]
+                        values["spoken_response"] = f"Opening YouTube and playing '{clean_yt}', sir."
+                    values["interpreted_intent"] = "pc_automation_youtube"
+                    return values
+
+            # -----------------------------------------------------------------
+            # BROWSER INTENTS
+            # -----------------------------------------------------------------
+            elif any(w in raw_p for w in ["open my browser", "open browser", "launch browser", "open the browser", "launch my browser"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "browser", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching web browser, sir."
+                values["interpreted_intent"] = "pc_automation_browser"
+                return values
+
+            elif any(w in raw_p for w in ["open chrome", "launch chrome", "open google chrome", "launch google chrome"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "chrome", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Google Chrome browser, sir."
+                values["interpreted_intent"] = "pc_automation_chrome"
+                return values
+
+            elif any(w in raw_p for w in ["open brave", "launch brave", "open brave browser", "launch brave browser"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "brave", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Brave browser, sir."
+                values["interpreted_intent"] = "pc_automation_brave"
+                return values
+
+            elif any(w in raw_p for w in ["open edge", "launch edge", "open microsoft edge", "launch microsoft edge"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "edge", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Microsoft Edge, sir."
+                values["interpreted_intent"] = "pc_automation_edge"
+                return values
+
+            elif any(w in raw_p for w in ["open discord", "launch discord"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "discord", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Discord application, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open steam", "launch steam"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "steam", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Steam, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open vscode", "open vs code", "launch vscode", "launch vs code", "open visual studio code"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "vscode", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Launching Visual Studio Code, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open calculator", "open calc", "launch calculator", "launch calc"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "calculator", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Windows Calculator, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open notepad", "launch notepad"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "notepad", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Notepad, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open task manager", "open taskmanager", "open taskmgr"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "task_manager", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening Task Manager, sir."
+                values["interpreted_intent"] = "pc_automation_app"
+                return values
+
+            elif any(w in raw_p for w in ["open file explorer", "open explorer", "open my files", "open files"]):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "explorer", "action": "open_app", "value": None}
+                ]
+                values["spoken_response"] = "Opening File Explorer, sir."
+                values["interpreted_intent"] = "pc_automation_app"
                 return values
 
         # 1. Extract or construct actions list
@@ -547,13 +887,11 @@ class AssistantIntentResponse(BaseModel):
 
 # Backward compatibility alias
 ActionPlan = AssistantIntentResponse
-
-
 class PCAutomationEngine:
     """
     Dynamic Universal PC Desktop Automation Engine.
     Executes actions decided by the LLM (opening apps, closing processes, web navigation, system controls).
-    Zero hardcoded user paths or regular expressions.
+    Features robust Spotify search & autoplay, YouTube playback, browser launching, and Windows app discovery.
     """
 
     KNOWN_PROCESS_MAP = {
@@ -571,11 +909,14 @@ class PCAutomationEngine:
         "paint": "mspaint.exe",
         "mspaint": "mspaint.exe",
         "cmd": "cmd.exe",
+        "command prompt": "cmd.exe",
         "powershell": "powershell.exe",
         "terminal": "wt.exe",
+        "wt": "wt.exe",
         "code": "Code.exe",
         "vscode": "Code.exe",
         "vs code": "Code.exe",
+        "visual studio code": "Code.exe",
         "discord": "Discord.exe",
         "steam": "steam.exe",
         "task_manager": "taskmgr.exe",
@@ -583,7 +924,10 @@ class PCAutomationEngine:
         "taskmgr": "taskmgr.exe",
         "explorer": "explorer.exe",
         "file explorer": "explorer.exe",
-        "file_explorer": "explorer.exe"
+        "file_explorer": "explorer.exe",
+        "word": "WINWORD.EXE",
+        "excel": "EXCEL.EXE",
+        "powerpoint": "POWERPNT.EXE"
     }
 
     WEB_FALLBACKS = {
@@ -595,7 +939,9 @@ class PCAutomationEngine:
         "youtube": "https://www.youtube.com",
         "github": "https://www.github.com",
         "canvas": "https://canvas.instructure.com",
-        "google": "https://www.google.com"
+        "google": "https://www.google.com",
+        "discord": "https://discord.com/app",
+        "steam": "https://store.steampowered.com"
     }
 
     _app_cache: Dict[str, str] = {}
@@ -614,20 +960,23 @@ class PCAutomationEngine:
             r"C:\Program Files\Google\Chrome\Application",
             r"C:\Program Files (x86)\Google\Chrome\Application",
             r"C:\Program Files (x86)\Microsoft\Edge\Application",
-            os.path.expandvars(r"%LOCALAPPDATA%\Programs")
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs"),
+            r"C:\Program Files",
+            r"C:\Program Files (x86)"
         ]
 
         for root_dir in search_roots:
             if os.path.exists(root_dir):
                 try:
-                    for root, _, files in os.walk(root_dir):
+                    for root, dirs, files in os.walk(root_dir):
+                        depth = root[len(root_dir):].count(os.sep)
+                        if depth > 4:
+                            dirs.clear()
+                            continue
                         for file in files:
                             fl = file.lower()
-                            if fl.endswith(".lnk") or fl.endswith(".exe") or fl.endswith(".url"):
-                                if "." in file:
-                                    key = file.rsplit(".", 1)[0].lower()
-                                else:
-                                    key = file.lower()
+                            if fl.endswith((".lnk", ".exe", ".url")):
+                                key = file.rsplit(".", 1)[0].lower() if "." in file else fl
                                 full_p = os.path.join(root, file)
                                 if key not in cls._app_cache:
                                     cls._app_cache[key] = full_p
@@ -666,12 +1015,40 @@ class PCAutomationEngine:
             "notepad": [
                 r"C:\Windows\System32\notepad.exe",
                 os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WindowsApps\notepad.exe")
+            ],
+            "discord": [
+                os.path.expandvars(r"%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe"),
+                os.path.expandvars(r"%LOCALAPPDATA%\Discord\app-*\Discord.exe"),
+                os.path.expandvars(r"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Discord Inc\Discord.lnk")
+            ],
+            "steam": [
+                r"C:\Program Files (x86)\Steam\steam.exe",
+                r"C:\Program Files\Steam\steam.exe"
+            ],
+            "brave": [
+                r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe")
+            ],
+            "chrome": [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
+            ],
+            "edge": [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
             ]
         }
 
         if clean in custom_paths:
             for p in custom_paths[clean]:
-                if os.path.exists(p):
+                if "*" in p:
+                    import glob
+                    matches = glob.glob(p)
+                    if matches and os.path.exists(matches[0]):
+                        return matches[0]
+                elif os.path.exists(p):
                     return p
 
         # 2. System PATH lookup
@@ -685,29 +1062,91 @@ class PCAutomationEngine:
             return cls._app_cache[clean]
 
         for k, path in cls._app_cache.items():
-            if clean in k or k in clean:
+            if clean == k or clean in k or k in clean:
                 return path
+
+        # 4. Fuzzy match via RapidFuzz
+        if RAPIDFUZZ_AVAILABLE and cls._app_cache:
+            try:
+                match = process.extractOne(clean, list(cls._app_cache.keys()), scorer=fuzz.partial_ratio)
+                if match and match[1] >= 80:
+                    return cls._app_cache[match[0]]
+            except Exception:
+                pass
 
         return None
 
     @classmethod
-    def launch_app(cls, app_name: str) -> Tuple[bool, str]:
-        """Launches application dynamically on Windows desktop."""
+    def focus_window(cls, app_name: str) -> bool:
+        """Restores (SW_RESTORE=9) and brings an application window to foreground."""
         clean = app_name.lower().strip()
+        proc_exe = cls.KNOWN_PROCESS_MAP.get(clean, f"{clean}.exe").replace(".exe", "")
+
+        try:
+            if WIN32_AVAILABLE:
+                import win32gui
+                found_hwnd = []
+                def _enum_windows_cb(hwnd, extra):
+                    if win32gui.IsWindowVisible(hwnd):
+                        w_title = win32gui.GetWindowText(hwnd).lower()
+                        if clean in w_title or proc_exe.lower() in w_title:
+                            found_hwnd.append(hwnd)
+                win32gui.EnumWindows(_enum_windows_cb, None)
+                if found_hwnd:
+                    win32gui.ShowWindow(found_hwnd[0], 9)  # SW_RESTORE
+                    win32gui.SetForegroundWindow(found_hwnd[0])
+                    return True
+        except Exception:
+            pass
+
+        try:
+            ps_script = f"""
+            $proc = Get-Process -Name "{proc_exe}" -ErrorAction SilentlyContinue | Where-Object {{ $_.MainWindowHandle -ne 0 }} | Select-Object -First 1
+            if ($proc) {{
+                $wshell = New-Object -ComObject WScript.Shell
+                $wshell.AppActivate($proc.Id)
+            }}
+            """
+            res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], capture_output=True, timeout=2)
+            return res.returncode == 0
+        except Exception:
+            return False
+
+    @classmethod
+    def is_process_running(cls, app_name: str) -> bool:
+        clean = app_name.lower().strip()
+        proc_exe = cls.KNOWN_PROCESS_MAP.get(clean, f"{clean}.exe").lower()
+        try:
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'] and proc.info['name'].lower() == proc_exe:
+                    return True
+        except Exception:
+            pass
+        return False
+
+    @classmethod
+    def launch_app(cls, app_name: str) -> Tuple[bool, str]:
+        """Launches application dynamically on Windows desktop, restoring and focusing existing instances."""
+        clean = app_name.lower().strip()
+
+        # Check if already running and responsive -> focus window
+        if cls.is_process_running(clean):
+            if cls.focus_window(clean):
+                return True, f"Focused active window for {clean.capitalize()}."
 
         # Browser handler
         if clean in ["brave", "chrome", "google chrome", "edge", "msedge", "firefox", "browser"]:
-            target_browser = "chrome" if clean == "browser" else clean
+            target_browser = "brave" if (clean == "browser" and cls.resolve_app_path("brave")) else ("chrome" if (clean == "browser" and cls.resolve_app_path("chrome")) else ("edge" if clean == "browser" else clean))
             p = cls.resolve_app_path(target_browser)
-            if p:
+            if p and os.path.exists(p):
                 try:
                     subprocess.Popen([p, "--new-window"])
-                    return True, f"Launched {clean.capitalize()} browser window."
+                    return True, f"Launched {target_browser.capitalize()} browser window."
                 except Exception:
                     pass
             try:
                 webbrowser.open_new("https://google.com")
-                return True, f"Opened default web browser."
+                return True, "Opened default web browser."
             except Exception:
                 pass
 
@@ -718,17 +1157,17 @@ class PCAutomationEngine:
             if spotify_p and os.path.exists(spotify_p):
                 try:
                     subprocess.Popen([spotify_p])
+                    time.sleep(0.8)
+                    cls.focus_window("spotify")
                     return True, "Launched Spotify Application."
                 except Exception:
-                    try:
-                        os.startfile(spotify_p)
-                        return True, "Launched Spotify Application."
-                    except Exception:
-                        pass
+                    pass
 
             # Stage 2: Windows URI protocol
             try:
                 os.system("start spotify:")
+                time.sleep(0.8)
+                cls.focus_window("spotify")
                 return True, "Launched Spotify."
             except Exception:
                 pass
@@ -743,6 +1182,43 @@ class PCAutomationEngine:
             # Stage 4: Web Fallback
             webbrowser.open("https://open.spotify.com")
             return True, "Opened Spotify Web Player."
+
+        # Discord handler
+        if clean in ["discord", "discord app"]:
+            disc_p = cls.resolve_app_path("discord")
+            if disc_p and os.path.exists(disc_p):
+                try:
+                    if disc_p.endswith(".lnk"):
+                        os.startfile(disc_p)
+                    else:
+                        subprocess.Popen([disc_p], shell=True)
+                    return True, "Launched Discord."
+                except Exception:
+                    pass
+            try:
+                os.system("start discord:")
+                return True, "Launched Discord."
+            except Exception:
+                pass
+            webbrowser.open("https://discord.com/app")
+            return True, "Opened Discord Web."
+
+        # Steam handler
+        if clean in ["steam", "steam app"]:
+            steam_p = cls.resolve_app_path("steam")
+            if steam_p and os.path.exists(steam_p):
+                try:
+                    subprocess.Popen([steam_p], shell=True)
+                    return True, "Launched Steam."
+                except Exception:
+                    pass
+            try:
+                os.system("start steam:")
+                return True, "Launched Steam."
+            except Exception:
+                pass
+            webbrowser.open("https://store.steampowered.com")
+            return True, "Opened Steam."
 
         # Calculator handler
         if clean in ["calc", "calculator", "calculator app"]:
@@ -780,6 +1256,13 @@ class PCAutomationEngine:
                 except Exception:
                     pass
 
+        # URI Protocol Attempt
+        try:
+            os.system(f"start {clean}:")
+            return True, f"Launched '{clean.capitalize()}'."
+        except Exception:
+            pass
+
         if clean in cls.WEB_FALLBACKS:
             url = cls.WEB_FALLBACKS[clean]
             webbrowser.open(url)
@@ -789,7 +1272,7 @@ class PCAutomationEngine:
 
     @classmethod
     def close_app(cls, app_name: str) -> Tuple[bool, str]:
-        """Terminates active process gracefully or via taskkill without regular expressions."""
+        """Terminates active process gracefully or via taskkill."""
         clean = app_name.strip()
         if clean.lower().endswith(".exe"):
             clean = clean[:-4]
@@ -810,6 +1293,100 @@ class PCAutomationEngine:
             return False, f"Error closing {clean}: {e}"
 
     @classmethod
+    def play_spotify(cls, query: Optional[str] = None) -> str:
+        """Cognitive Spotify automation: launches app, searches track, and triggers playback via keystroke automation."""
+        clean_q = str(query or "").strip()
+        # Filter filler words
+        clean_q = re.sub(r'^(?:play|listen\s+to|stream|put\s+on)\s+', '', clean_q, flags=re.IGNORECASE)
+        clean_q = re.sub(r'\s+(?:on|in)\s+spotify.*$', '', clean_q, flags=re.IGNORECASE)
+        clean_q = clean_q.strip()
+
+        if not clean_q or clean_q.lower() in ["something", "music", "some music", "a song", "song", "tracks", "anything", "spotify"]:
+            # Resume playback
+            os.system("start spotify:")
+            time.sleep(0.5)
+            cls.focus_window("spotify")
+            if WIN32_AVAILABLE:
+                win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
+            elif PYAUTOGUI_AVAILABLE:
+                pyautogui.press('playpause')
+            return "PC Action: Resumed playback on Spotify"
+
+        def _bg_spotify():
+            try:
+                # 1. Open Spotify
+                os.system("start spotify:")
+                time.sleep(0.6)
+                cls.focus_window("spotify")
+
+                # 2. Dispatch Search URI
+                encoded_q = urllib.parse.quote(clean_q)
+                os.system(f"start spotify:search:{encoded_q}")
+                time.sleep(1.5)
+                cls.focus_window("spotify")
+
+                # 3. Use Ctrl+K quick search overlay to select top item
+                if PYAUTOGUI_AVAILABLE:
+                    for k in ['ctrl', 'alt', 'shift']:
+                        try: pyautogui.keyUp(k)
+                        except Exception: pass
+                    pyautogui.press('escape')
+                    time.sleep(0.2)
+                    pyautogui.hotkey('ctrl', 'k')
+                    time.sleep(0.4)
+                    pyautogui.hotkey('ctrl', 'a')
+                    time.sleep(0.1)
+                    pyautogui.press('backspace')
+                    time.sleep(0.1)
+                    if 'pyperclip' in sys.modules:
+                        import pyperclip
+                        pyperclip.copy(clean_q)
+                        time.sleep(0.1)
+                        pyautogui.hotkey('ctrl', 'v')
+                    else:
+                        pyautogui.write(clean_q)
+                    time.sleep(0.7)
+                    pyautogui.press('enter')
+            except Exception as e:
+                print(f"[PCAutomationEngine Spotify Async Error: {e}]")
+
+        threading.Thread(target=_bg_spotify, daemon=True).start()
+        return f"PC Action: Playing '{clean_q.title()}' on Spotify"
+
+    @classmethod
+    def play_youtube(cls, query: Optional[str] = None) -> str:
+        """Navigates YouTube in browser, selects the top video result, and starts playback."""
+        clean_q = str(query or "").strip()
+        clean_q = re.sub(r'^(?:play|watch|search\s+(?:for\s+)?)\s+', '', clean_q, flags=re.IGNORECASE)
+        clean_q = re.sub(r'\s+(?:on|in)\s+you\s*tube.*$', '', clean_q, flags=re.IGNORECASE)
+        clean_q = clean_q.strip()
+
+        if not clean_q or clean_q.lower() in ["something", "a video", "video", "anything", "youtube", "you tube", "yt"]:
+            webbrowser.open_new("https://www.youtube.com")
+            return "PC Action: Opened YouTube homepage"
+
+        encoded = urllib.parse.quote(clean_q)
+        target_url = f"https://www.youtube.com/results?search_query={encoded}"
+        webbrowser.open_new(target_url)
+
+        def _bg_youtube():
+            try:
+                time.sleep(2.2)
+                cls.focus_window("brave") or cls.focus_window("chrome") or cls.focus_window("edge")
+                if PYAUTOGUI_AVAILABLE:
+                    pyautogui.press('escape')
+                    time.sleep(0.2)
+                    pyautogui.press('tab')
+                    time.sleep(0.1)
+                    pyautogui.press('enter')
+            except Exception as e:
+                print(f"[PCAutomationEngine YouTube Async Error: {e}]")
+
+        threading.Thread(target=_bg_youtube, daemon=True).start()
+        return f"PC Action: Playing '{clean_q}' on YouTube"
+
+    @classmethod
     def execute_pc_action(cls, target: str, action: str, value: Any = None) -> str:
         """Central execution router for LLM-decided PC automation actions."""
         target_clean = str(target or "").lower().strip()
@@ -820,80 +1397,42 @@ class PCAutomationEngine:
             _, msg = cls.close_app(target_clean)
             return f"PC Action: {msg}"
 
-        # 2. Play Music / Spotify Playback
-        if act_clean == "play_music" or (target_clean == "spotify" and act_clean in ["play", "stream", "listen"]):
-            if value:
-                q = urllib.parse.quote(str(value))
-                try:
-                    os.system(f"start spotify:search:{q}")
-                except Exception:
-                    webbrowser.open(f"https://open.spotify.com/search/{q}")
-                return f"PC Action: Playing '{value}' on Spotify"
-            else:
-                if WIN32_AVAILABLE:
-                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
-                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
-                elif PYAUTOGUI_AVAILABLE:
-                    pyautogui.press('playpause')
-                return "PC Action: Resumed playback on Spotify"
+        # 2. Spotify Playback
+        if target_clean == "spotify" or act_clean in ["play_music", "play_song"] or (act_clean in ["play", "stream", "listen"] and target_clean not in ["youtube"]):
+            return cls.play_spotify(value)
 
-        # 3. Web Search & Navigation
-        if act_clean == "web_search" or "search" in target_clean:
+        # 3. YouTube Playback & Navigation
+        if "youtube" in target_clean or act_clean == "youtube":
+            return cls.play_youtube(value)
+
+        # 4. Web Search
+        if act_clean == "web_search" or target_clean in ["web_search", "google_search"]:
             query = str(value or target_clean.replace("search", "")).strip()
             url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
             webbrowser.open_new(url)
             return f"PC Action: Searched Google for '{query}'"
 
-        # 4. YouTube Website / Search
-        if "youtube" in target_clean or act_clean == "youtube":
-            if value:
-                query_str = urllib.parse.quote(str(value))
-                url = f"https://www.youtube.com/results?search_query={query_str}"
-            else:
-                url = "https://www.youtube.com"
-            webbrowser.open_new(url)
-            return f"PC Action: Opened YouTube ({value if value else 'Home'})"
-
-        # 5. Open Website (Chrome, GitHub, Canvas, etc.)
+        # 5. Open Website
         if act_clean == "open_website" or target_clean in ["github", "google", "canvas"]:
-            if target_clean in ["chrome", "google"]:
-                if value:
-                    if str(value).startswith("http"):
-                        url = str(value)
-                    else:
-                        url = f"https://www.google.com/search?q={urllib.parse.quote(str(value))}"
-                    webbrowser.open_new(url)
-                    return f"PC Action: Searched Google for '{value}'"
+            if target_clean == "google":
+                if value and not str(value).startswith("http"):
+                    url = f"https://www.google.com/search?q={urllib.parse.quote(str(value))}"
                 else:
-                    _, msg = cls.launch_app("chrome")
-                    return f"PC Action: {msg}"
+                    url = "https://www.google.com"
             elif target_clean == "github":
                 url = "https://github.com" if not value else str(value)
-                webbrowser.open_new(url)
-                return f"PC Action: Opened GitHub ({url})"
             elif target_clean in cls.WEB_FALLBACKS:
                 url = cls.WEB_FALLBACKS[target_clean]
             elif value and str(value).startswith("http"):
                 url = str(value)
+            elif target_clean == "browser":
+                url = "https://www.google.com"
             else:
                 url = f"https://www.{target_clean}.com" if not target_clean.startswith("http") else target_clean
             webbrowser.open_new(url)
             return f"PC Action: Opened website '{url}'"
 
-        # 6. Spotify Bare Launch
-        if target_clean == "spotify":
-            if value:
-                q = urllib.parse.quote(str(value))
-                try:
-                    os.system(f"start spotify:search:{q}")
-                except Exception:
-                    webbrowser.open(f"https://open.spotify.com/search/{q}")
-                return f"PC Action: Playing '{value}' on Spotify"
-            else:
-                _, msg = cls.launch_app("spotify")
-                return f"PC Action: {msg}"
-
-        # 7. Media & Volume Controls
+        # 6. Media & Volume Controls
         if act_clean in ["media_control", "volume", "media"] or any(k in target_clean for k in ["volume", "mute", "pause", "play", "skip", "next", "prev"]):
             val_str = str(value or "").lower()
             if "next" in val_str or "next" in target_clean or "skip" in target_clean:
@@ -946,7 +1485,7 @@ class PCAutomationEngine:
                     pyautogui.press('playpause')
                 return f"PC Action: Toggled media playback ({value if value else 'Play/Pause'})"
 
-        # 8. System Controls
+        # 7. System Controls
         if act_clean in ["system_control", "lock_pc", "open_task_manager", "open_explorer"] or target_clean in ["lock_pc", "lock", "task_manager", "open_task_manager", "file_explorer", "open_explorer", "screenshot", "system"]:
             if target_clean in ["lock_pc", "lock"] or act_clean == "lock_pc":
                 if sys.platform == "win32":
@@ -965,7 +1504,7 @@ class PCAutomationEngine:
                     pyautogui.screenshot("screenshot.png")
                     return "PC Action: Captured screen to screenshot.png"
 
-        # 9. Dynamic Native Application Launcher
+        # 8. Dynamic Native Application Launcher
         _, msg = cls.launch_app(target_clean)
         return f"PC Action: {msg}"
 
@@ -1185,50 +1724,109 @@ class AIEngine:
 
         # 7. Spotify Commands
         elif "spotify" in p_lower:
-            if any(w in p_lower for w in ["play", "search", "listen to"]):
-                # Extract query if present
-                clean_query = p_lower.replace("play", "").replace("on spotify", "").replace("spotify", "").replace("listen to", "").strip()
-                if clean_query:
-                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="media_control", value=clean_query))
-                    spoken = f"Playing '{clean_query}' on Spotify."
-                else:
-                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="open_app"))
-                    spoken = "Opening Spotify, sir."
-            else:
+            if any(w in p_lower for w in ["open", "launch", "start", "run", "go to"]) and not any(w in p_lower for w in ["play", "listen", "stream", "search"]):
                 actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="open_app"))
                 spoken = "Launching Spotify application, sir."
+            elif any(w in p_lower for w in ["close", "exit", "kill", "terminate", "stop"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="close_app"))
+                spoken = "Closing Spotify, sir."
+            else:
+                clean_q = p_lower
+                clean_q = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:open\s+(?:my\s+)?spotify\s+(?:and\s+)?(?:play\s+)?|launch\s+spotify\s+and\s+play\s+)', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:play|listen\s+to|stream|put\s+on)\s+', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'\s+(?:on|in|from)\s+(?:my\s+)?spotify.*$', '', clean_q, flags=re.IGNORECASE)
+                clean_q = re.sub(r'^(?:on|in)\s+spotify\s+', '', clean_q, flags=re.IGNORECASE)
+                clean_q = clean_q.strip()
+
+                if not clean_q or clean_q in ["something", "music", "some music", "a song", "song", "tracks", "anything", "spotify"]:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=None))
+                    spoken = "Resuming music playback on Spotify, sir."
+                else:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=clean_q))
+                    spoken = f"Playing '{clean_q.title()}' on Spotify, sir."
+
+        # Generic music playback without explicit spotify keyword
+        elif any(w in p_lower for w in ["play some music", "play music", "play a song", "play songs", "resume music"]):
+            actions.append(DeviceAction(domain="pc_automation", device_or_target="spotify", action="play_music", value=None))
+            spoken = "Resuming music playback on Spotify, sir."
 
         # 8. YouTube Commands
-        elif "youtube" in p_lower:
-            query = p_lower.replace("open youtube and search for", "").replace("open youtube and search", "").replace("open youtube", "").replace("youtube", "").replace("search for", "").strip()
-            val = query if query else None
-            actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=val))
-            spoken = f"Opening YouTube for '{query}', sir." if query else "Opening YouTube, sir."
+        elif "youtube" in p_lower or "you tube" in p_lower or p_lower.startswith("open yt") or p_lower.startswith("launch yt"):
+            if any(w in p_lower for w in ["open", "launch", "go to", "start"]) and not any(w in p_lower for w in ["play", "search", "watch", "find"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=None))
+                spoken = "Opening YouTube homepage, sir."
+            else:
+                clean_yt = p_lower
+                clean_yt = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:open\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?|launch\s+you\s*tube\s+(?:and\s+)?(?:search\s+(?:for\s+)?|play\s+|watch\s+)?)', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'^(?:play|watch|search\s+(?:for\s+)?)\s+', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = re.sub(r'\s+(?:on|in)\s+you\s*tube.*$', '', clean_yt, flags=re.IGNORECASE)
+                clean_yt = clean_yt.strip()
 
-        # 9. Individual App Launches (Notepad, Calculator, VS Code, Paint, Browser, etc.)
-        elif any(w in p_lower for w in ["open", "launch", "start"]):
-            if "notepad" in p_lower:
+                if not clean_yt or clean_yt in ["something", "a video", "video", "videos", "anything", "youtube", "you tube", "yt"]:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=None))
+                    spoken = "Opening YouTube, sir."
+                else:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target="youtube", action="open_website", value=clean_yt))
+                    spoken = f"Opening YouTube and playing '{clean_yt}', sir."
+
+        # 9. Browser & App Launches (Browser, Chrome, Brave, Edge, Firefox, Discord, Steam, VS Code, Notepad, Calc, Paint, etc.)
+        elif any(w in p_lower for w in ["open", "launch", "start", "run"]):
+            if any(b in p_lower for b in ["browser", "web browser", "my browser", "the browser"]):
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="browser", action="open_app"))
+                spoken = "Launching web browser, sir."
+            elif "chrome" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="chrome", action="open_app"))
+                spoken = "Launching Google Chrome browser, sir."
+            elif "brave" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="brave", action="open_app"))
+                spoken = "Launching Brave browser, sir."
+            elif "edge" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="edge", action="open_app"))
+                spoken = "Launching Microsoft Edge, sir."
+            elif "firefox" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="firefox", action="open_app"))
+                spoken = "Launching Firefox browser, sir."
+            elif "discord" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="discord", action="open_app"))
+                spoken = "Opening Discord application, sir."
+            elif "steam" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="steam", action="open_app"))
+                spoken = "Launching Steam, sir."
+            elif "notepad" in p_lower:
                 actions.append(DeviceAction(domain="pc_automation", device_or_target="notepad", action="open_app"))
                 spoken = "Launching Notepad, sir."
             elif "calc" in p_lower or "calculator" in p_lower:
                 actions.append(DeviceAction(domain="pc_automation", device_or_target="calculator", action="open_app"))
                 spoken = "Launching Calculator, sir."
             elif "code" in p_lower or "vscode" in p_lower:
-                actions.append(DeviceAction(domain="pc_automation", device_or_target="code", action="open_app"))
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="vscode", action="open_app"))
                 spoken = "Launching Visual Studio Code, sir."
-            elif "paint" in p_lower:
+            elif "paint" in p_lower or "mspaint" in p_lower:
                 actions.append(DeviceAction(domain="pc_automation", device_or_target="paint", action="open_app"))
                 spoken = "Launching Paint, sir."
-            elif "task manager" in p_lower:
-                actions.append(DeviceAction(domain="pc_automation", device_or_target="task_manager", action="system_control"))
+            elif "task manager" in p_lower or "taskmanager" in p_lower or "taskmgr" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="task_manager", action="open_app"))
                 spoken = "Opening Task Manager, sir."
             elif "explorer" in p_lower or "files" in p_lower:
-                actions.append(DeviceAction(domain="pc_automation", device_or_target="explorer", action="system_control"))
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="explorer", action="open_app"))
                 spoken = "Opening File Explorer, sir."
-            elif any(b in p_lower for b in ["brave", "chrome", "edge", "browser"]):
-                target_b = "brave" if "brave" in p_lower else ("chrome" if "chrome" in p_lower else "browser")
-                actions.append(DeviceAction(domain="pc_automation", device_or_target=target_b, action="open_app"))
-                spoken = f"Launching {target_b.capitalize()} browser, sir."
+            elif "terminal" in p_lower or "cmd" in p_lower or "command prompt" in p_lower or "powershell" in p_lower:
+                actions.append(DeviceAction(domain="pc_automation", device_or_target="terminal", action="open_app"))
+                spoken = "Opening Terminal, sir."
+            else:
+                # Dynamic extraction of requested app name
+                clean_target = p_lower
+                clean_target = re.sub(r'^(?:hey\s+)?(?:jarvis\s*,?\s*)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = re.sub(r'^(?:can\s+you\s+)?(?:please\s+)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = re.sub(r'^(?:open|launch|start|run)\s+(?:my\s+|the\s+)?', '', clean_target, flags=re.IGNORECASE)
+                clean_target = clean_target.replace("app", "").replace("application", "").strip()
+                if clean_target:
+                    actions.append(DeviceAction(domain="pc_automation", device_or_target=clean_target, action="open_app"))
+                    spoken = f"Launching {clean_target.title()}, sir."
 
         # 10. Smart Home Direct Controls
         elif "temperature" in p_lower or "thermostat" in p_lower or "temp" in p_lower:
