@@ -11,6 +11,16 @@ Features:
 
 import os
 import sys
+import warnings
+
+# Suppress HuggingFace Hub unauthenticated / symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+warnings.filterwarnings("ignore", message=".*cache-system uses symlinks.*")
+
 import re
 import time
 import queue

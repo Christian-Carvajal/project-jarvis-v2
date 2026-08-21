@@ -3,7 +3,11 @@
 
 
 ======================================================================
+<<<<<<< HEAD
 TIMESTAMP: 2026-08-21T05:46:59.349735
+=======
+TIMESTAMP: 2026-08-20T18:06:22.871751
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
 VOICE TRANSCRIPTION: "It is freezing and dark in here"
 PARSED JSON PAYLOAD:
 {
@@ -14,6 +18,7 @@ PARSED JSON PAYLOAD:
       "device_or_target": "thermostat",
       "action": "set_temperature",
       "value": 24.0
+<<<<<<< HEAD
     },
     {
       "domain": "smart_home",
@@ -45,27 +50,24 @@ PARSED JSON PAYLOAD:
       "device_or_target": "bedroom_light",
       "action": "turn_off",
       "value": null
+=======
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
     },
     {
       "domain": "smart_home",
       "device_or_target": "living_room_light",
-      "action": "turn_off",
-      "value": null
-    },
-    {
-      "domain": "smart_home",
-      "device_or_target": "front_door_lock",
-      "action": "lock",
-      "value": null
+      "action": "turn_on",
+      "value": 100
     }
   ],
-  "raw_prompt": "Goodnight Jarvis, I am going to bed now",
+  "raw_prompt": "It is freezing and dark in here",
   "interpreted_intent": "agentic_action_plan",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": null,
   "eval_count": null,
   "eval_duration_ms": null
 }
+<<<<<<< HEAD
 STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Living Room Light: ON (100%) -> OFF; Front Door Lock: LOCKED -> LOCKED
 EXECUTION LATENCY: 3003.89 ms (3.00 s)
 ======================================================================
@@ -76,9 +78,50 @@ VOICE TRANSCRIPTION: "Movie night mode"
 PARSED JSON PAYLOAD:
 {
   "spoken_response": "Activating cinema mode, sir. Entertainment system online and ambient lighting set.",
+=======
+STATE TRANSITIONS: Climate Thermostat: 22.0°C (AUTO) -> 24.0°C (HEAT); Living Room Light: OFF -> ON (100%)
+EXECUTION LATENCY: 33580.38 ms (33.58 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T18:06:37.509762
+VOICE TRANSCRIPTION: "Goodnight Jarvis, I am going to bed now"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Goodnight. Sleep well.",
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
   "actions": [
     {
       "domain": "smart_home",
+      "device_or_target": "entertainment_unit",
+      "action": "turn_on",
+      "value": null
+    }
+  ],
+  "raw_prompt": "Goodnight Jarvis, I am going to bed now",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 124,
+  "eval_count": 658,
+  "eval_duration_ms": 9954.339
+}
+STATE TRANSITIONS: Living Room Light: ON (100%) -> ON (100%)
+EXECUTION LATENCY: 14635.66 ms (14.64 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T18:07:11.084544
+VOICE TRANSCRIPTION: "Movie night mode"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Activating cinema mode, sir. Entertainment system online and ambient lighting set.",
+  "actions": [
+    {
+      "domain": "smart_home",
+<<<<<<< HEAD
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+=======
       "device_or_target": "entertainment_unit",
       "action": "turn_on",
       "value": null
@@ -87,6 +130,7 @@ PARSED JSON PAYLOAD:
       "domain": "smart_home",
       "device_or_target": "living_room_light",
       "action": "turn_on",
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
       "value": 25
     }
   ],
@@ -97,12 +141,21 @@ PARSED JSON PAYLOAD:
   "eval_count": null,
   "eval_duration_ms": null
 }
+<<<<<<< HEAD
 STATE TRANSITIONS: Entertainment Unit: OFF -> ACTIVE; Living Room Light: OFF -> ON (25%)
 EXECUTION LATENCY: 3002.58 ms (3.00 s)
 ======================================================================
 
 ======================================================================
 TIMESTAMP: 2026-08-21T05:47:08.361738
+=======
+STATE TRANSITIONS: Entertainment Unit: OFF -> ACTIVE; Living Room Light: ON (100%) -> ON (25%)
+EXECUTION LATENCY: 33573.76 ms (33.57 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T18:07:44.656651
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
 VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
 PARSED JSON PAYLOAD:
 {
@@ -123,6 +176,7 @@ PARSED JSON PAYLOAD:
   "eval_duration_ms": null
 }
 STATE TRANSITIONS: PC Action: open_website -> youtube (classical music)
+<<<<<<< HEAD
 EXECUTION LATENCY: 3003.40 ms (3.00 s)
 ======================================================================
 
@@ -132,6 +186,17 @@ VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
 PARSED JSON PAYLOAD:
 {
   "spoken_response": "Opening Notepad and illuminating the living room lights.",
+=======
+EXECUTION LATENCY: 33570.69 ms (33.57 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T18:07:55.717326
+VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Command executed successfully, sir.",
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
   "actions": [
     {
       "domain": "pc_automation",
@@ -144,11 +209,21 @@ PARSED JSON PAYLOAD:
       "device_or_target": "living_room_light",
       "action": "turn_on",
       "value": null
+<<<<<<< HEAD
+=======
+    },
+    {
+      "domain": "desktop",
+      "device_or_target": "notepad",
+      "action": "open",
+      "value": null
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
     }
   ],
   "raw_prompt": "Open Notepad and turn on the living room light",
   "interpreted_intent": "agentic_action_plan",
   "model_name": "jarvis-trained-model",
+<<<<<<< HEAD
   "prompt_eval_count": null,
   "eval_count": null,
   "eval_duration_ms": null
@@ -159,6 +234,18 @@ EXECUTION LATENCY: 3004.24 ms (3.00 s)
 
 ======================================================================
 TIMESTAMP: 2026-08-21T05:47:14.381444
+=======
+  "prompt_eval_count": 124,
+  "eval_count": 422,
+  "eval_duration_ms": 6338.475
+}
+STATE TRANSITIONS: Living Room Light: ON (25%) -> ON (100%); No transition for notepad
+EXECUTION LATENCY: 11059.33 ms (11.06 s)
+======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-20T18:08:29.293095
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
 VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
 PARSED JSON PAYLOAD:
 {
@@ -185,6 +272,7 @@ PARSED JSON PAYLOAD:
   "eval_duration_ms": null
 }
 STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; PC Action: system_control -> lock_pc
+<<<<<<< HEAD
 EXECUTION LATENCY: 3004.16 ms (3.00 s)
 ======================================================================
 Imported existing <module 'comtypes.gen' from 'C:\\Users\\JOHN MIKO SARSALIJO\\Downloads\\project-jarvis-v2\\.venv\\Lib\\site-packages\\comtypes\\gen\\__init__.py'>
@@ -216,3 +304,7 @@ EXECUTION LATENCY: 20209.16 ms (20.21 s)
 ======================================================================
 Imported existing <module 'comtypes.gen' from 'C:\\Users\\JOHN MIKO SARSALIJO\\Downloads\\project-jarvis-v2\\.venv\\Lib\\site-packages\\comtypes\\gen\\__init__.py'>
 Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+=======
+EXECUTION LATENCY: 33574.77 ms (33.57 s)
+======================================================================
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156

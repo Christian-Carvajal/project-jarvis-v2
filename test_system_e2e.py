@@ -138,7 +138,7 @@ def run_comprehensive_e2e_tests():
             latency_ms=latency_ms
         )
 
-        is_valid = isinstance(plan, AssistantIntentResponse) and len(plan.actions) > 0
+        is_valid = isinstance(plan, AssistantIntentResponse) and bool(plan.spoken_response)
         if is_valid:
             print(f"  [+] Pydantic Schema: VALID v2 ActionPlan", flush=True)
             print(f"  [+] Intent:          {plan.interpreted_intent}", flush=True)

@@ -1,7 +1,7 @@
 # 🧠 Project JARVIS AI — Model Abilities & Semantic Capabilities
 
 > **Project Name:** Project JARVIS v2  
-> **Core Architecture:** Local Edge AI powered by `jarvis-trained-model` (Fine-Tuned Qwen 3.5 2B Architecture via LoRA)  
+> **Core Architecture:** Local Edge AI powered exclusively by `jarvis-trained-model:latest` (Edge-optimized Qwen 3.5 2B Architecture via LoRA Adapters)  
 > **Authors & Developers:** Christian Ezekiel Carvajal & John Miko Sarsalijo  
 > **Course / Institution:** BSCS 3112 - Artificial Intelligence, University of Perpetual Help System DALTA (Molino Campus)  
 > **Faculty Advisor:** Prof. Roberto L. Malitao  
@@ -10,7 +10,7 @@
 
 ## 📖 Overview: How JARVIS Thinks & Operates
 
-Project JARVIS uses **100% Agentic Semantic LLM Reasoning** without hardcoded keyword lookups or rigid regular expressions. Every spoken or typed input is interpreted through an edge-optimized neural network that translates natural human language into deterministic, structured JSON schemas matching:
+Project JARVIS uses **100% Pure Agentic Semantic LLM Reasoning** without hardcoded keyword triggers or brittle regex matching. Every spoken or typed user prompt is parsed by our locally hosted, fine-tuned model `jarvis-trained-model` into deterministic, structured JSON actions:
 
 ```json
 {
@@ -20,167 +20,207 @@ Project JARVIS uses **100% Agentic Semantic LLM Reasoning** without hardcoded ke
       "domain": "smart_home" | "pc_automation",
       "device_or_target": "<device_or_application_identifier>",
       "action": "<command_action_identifier>",
-      "value": <numeric_value | string_query | null>
+      "value": <numeric_value | string_parameter | null>
     }
   ]
 }
 ```
 
-If a user simply wants to chat, ask questions, or verify system information, JARVIS returns an **empty actions list (`"actions": []`)** so that no devices or PC applications are triggered accidentally.
+### 🛡️ Strict Anti-Hallucination Rule
+Our model enforces a strict anti-hallucination constraint: **Never invent, guess, or hallucinate search queries, song names, artists, or parameters not explicitly stated by the user.**
+- If a user asks to *"Open YouTube"* without specifying a search query, `value` is strictly `null` (bare launch).
+- If a user asks to *"Open YouTube and search for classical piano"*, `value` is explicitly `"classical piano"`.
 
 ---
 
-## 🎯 The 10 Core Capability Domains
+## 🎯 The 11 Core Capability Domains
 
-Below is the complete reference of what our fine-tuned AI model understands, processes, and executes across both physical smart home hardware and digital desktop automation.
+Below is the comprehensive specification of what our fine-tuned AI model understands, processes, and executes across both physical smart home hardware and digital desktop automation.
 
 ---
 
-### 1. 🎓 Creator Identity & Academic Attribution
-JARVIS knows exactly who built it, why it was created, and its underlying architecture.
+### 1. 🎓 Creator Identity, Lore & Academic Attribution
+JARVIS knows its developers, academic background, purpose, and underlying neural architecture.
 
 | User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
-| *"Who created you?"* | *"I am Project JARVIS, an autonomous AI smart-home and desktop assistant engineered by Christian and Miko."* | `[]` *(None)* |
-| *"Who made you?"* | *"I was developed by Christian and Miko as an advanced edge AI initiative at the University of Perpetual Help."* | `[]` *(None)* |
-| *"What are you?"* | *"I am a locally hosted, fine-tuned neural network designed by Christian and Miko to orchestrate digital and physical environments."* | `[]` *(None)* |
+| *"Who created you?"* | *"I am Project JARVIS, an autonomous AI smart-home and desktop assistant developed by Christian Ezekiel Carvajal and John Miko Sarsalijo."* | `[]` *(None)* |
+| *"Who made you?"* | *"I was engineered by Christian and Miko as an edge AI initiative at the University of Perpetual Help System Dalta."* | `[]` *(None)* |
+| *"Who are your developers?"* | *"My core architecture was designed and implemented by Christian Ezekiel Carvajal and John Miko Sarsalijo."* | `[]` *(None)* |
+| *"Who built this project?"* | *"Project JARVIS was built by Christian Ezekiel Carvajal and John Miko Sarsalijo for our AI systems research."* | `[]` *(None)* |
+| *"What are you?"* | *"I am a locally hosted, fine-tuned neural agent designed to manage smart home automation and desktop workflows."* | `[]` *(None)* |
 | *"Tell me about your architecture"* | *"I run on an edge-optimized Qwen 3.5 2B architecture fine-tuned via LoRA adapters for deterministic JSON action dispatching and low-latency inference."* | `[]` *(None)* |
+| *"What is your purpose?"* | *"My purpose is to orchestrate smart home devices, automate desktop tasks, and provide offline AI assistance with zero cloud latency."* | `[]` *(None)* |
 
 ---
 
-### 2. 🌡️ Thermal Controls, Safety Warnings & Clamping
-The AI interprets temperature requests in Celsius, detects hazardous extremes, and safely clamps the thermostat between **`10.0°C`** (cooling floor) and **`60.0°C`** (heating ceiling).
+### 2. 🔍 Anti-Hallucination: Bare Launch vs. Explicit Search Contrast Pairs
+Distinguishes between opening a homepage vs. querying specific content without hallucinating parameters.
+
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
+| :--- | :--- | :--- |
+| *"Open YouTube"* | *"Opening YouTube homepage."* | `[pc_automation] youtube.open_website (null)` |
+| *"Just open YouTube, don't search anything"* | *"Opening YouTube homepage without searching."* | `[pc_automation] youtube.open_website (null)` |
+| *"Open YouTube and search for classical piano"* | *"Opening YouTube and searching for classical piano."* | `[pc_automation] youtube.open_website ("classical piano")` |
+| *"Open Spotify"* | *"Launching Spotify application."* | `[pc_automation] spotify.open_app (null)` |
+| *"Play Spotify"* | *"Resuming playback on Spotify."* | `[pc_automation] spotify.play_music (null)` |
+| *"play 24k magic on spotify"* | *"Playing 24k Magic on Spotify."* | `[pc_automation] spotify.play_music ("24k magic")` |
+| *"Open Google Chrome"* | *"Launching Google Chrome browser."* | `[pc_automation] chrome.open_app (null)` |
+| *"Search for latest AI news on Google"* | *"Searching Google for the latest AI news."* | `[pc_automation] chrome.open_website ("latest AI news")` |
+| *"Open GitHub"* | *"Navigating to GitHub."* | `[pc_automation] chrome.open_website ("https://github.com")` |
+
+---
+
+### 3. 💻 PC App Launchers & System Controls
+Seamless multi-app management, process termination, desktop lock, and telemetry queries.
+
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
+| :--- | :--- | :--- |
+| *"Launch Notepad"* | *"Opening Notepad."* | `[pc_automation] notepad.open_app (null)` |
+| *"Open VS Code"* | *"Launching Visual Studio Code."* | `[pc_automation] vscode.open_app (null)` |
+| *"Open Calculator"* | *"Opening Windows Calculator."* | `[pc_automation] calculator.open_app (null)` |
+| *"Open Brave browser"* | *"Launching Brave browser."* | `[pc_automation] brave.open_app (null)` |
+| *"Open Discord"* | *"Opening Discord."* | `[pc_automation] discord.open_app (null)` |
+| *"Open Steam"* | *"Launching Steam."* | `[pc_automation] steam.open_app (null)` |
+| *"Open Terminal"* | *"Opening Windows Terminal."* | `[pc_automation] terminal.open_app (null)` |
+| *"Open Task Manager"* | *"Opening Task Manager."* | `[pc_automation] task_manager.open_app (null)` |
+| *"Close Spotify"* | *"Closing Spotify."* | `[pc_automation] spotify.close_app (null)` |
+| *"Close Notepad"* | *"Closing Notepad."* | `[pc_automation] notepad.close_app (null)` |
+| *"Exit Discord"* | *"Terminating Discord application."* | `[pc_automation] discord.close_app (null)` |
+| *"Lock my computer"* | *"Locking workstation desktop."* | `[pc_automation] lock_pc.system_control (null)` |
+| *"Check system status"* | *"Querying system telemetry and resource usage."* | `[pc_automation] system.system_control ("status")` |
+
+---
+
+### 4. 🎵 OS Media Transport & Volume Controls
+Direct multimedia key emulation for system volume and playback control.
+
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
+| :--- | :--- | :--- |
+| *"Pause the music"* | *"Pausing playback."* | `[pc_automation] media.media_control ("pause")` |
+| *"Resume music"* | *"Resuming audio playback."* | `[pc_automation] media.media_control ("resume")` |
+| *"Skip this song"* | *"Skipping to the next track."* | `[pc_automation] media.media_control ("next")` |
+| *"Previous song"* | *"Returning to previous track."* | `[pc_automation] media.media_control ("previous")` |
+| *"Turn up the volume"* | *"Increasing system volume."* | `[pc_automation] volume.media_control ("volume_up")` |
+| *"Volume down"* | *"Decreasing system volume."* | `[pc_automation] volume.media_control ("volume_down")` |
+| *"Mute audio"* | *"Muting master audio output."* | `[pc_automation] volume.media_control ("mute")` |
+
+---
+
+### 5. 🌡️ Thermal Regulation & Safety Clamping (10.0°C - 60.0°C)
+Interprets temperature in Celsius, detects hazardous extremes, and safely clamps target temperatures between **10.0°C** and **60.0°C**.
 
 | User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
 | *"Set temperature to 20"* | *"Target climate set to 20.0°C."* | `[smart_home] thermostat.set_temperature (20.0)` |
 | *"Make the room 50 celsius"* | *"Adjusting thermostat to 50.0°C. Note that this is significantly above standard comfort levels."* | `[smart_home] thermostat.set_temperature (50.0)` |
-| *"I am freezing I want 90c on thermostat"* | *"Warning: 90.0°C is an extreme thermal hazard. Regulating thermostat to maximum system ceiling of 60.0°C for safety."* | `[smart_home] thermostat.set_temperature (60.0)` |
+| *"I am freezing I want 90c on thermostat"* | *"Warning: 90.0°C is an extreme thermal hazard. Regulating thermostat to maximum safety ceiling of 60.0°C."* | `[smart_home] thermostat.set_temperature (60.0)` |
 | *"Set temperature to -50 celsius"* | *"Sub-zero climate requested. Clamping thermostat to minimum operating safety floor of 10.0°C."* | `[smart_home] thermostat.set_temperature (10.0)` |
 | *"It's boiling in here, set thermostat to 16"* | *"Initiating rapid cooling. Thermostat lowered to 16.0°C."* | `[smart_home] thermostat.set_temperature (16.0)` |
-| *"Make it a little warmer in here"* | *"Increasing thermostat by 2 degrees for additional warmth."* | `[smart_home] thermostat.set_temperature (25.0)` |
 
 ---
 
-### 3. 🔄 Conversational Corrections & Disambiguation
-If the user corrects themselves mid-conversation, changes their mind, or clarifies a target, JARVIS seamlessly updates the execution plan.
+### 6. 💡 Smart Home Lighting & Peripherals (With Dimming)
+Controls individual lights, brightness percentages, locks, fans, blinds, and alarms.
 
 | User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
-| *"No, I said turn OFF the kitchen light"* | *"Correction noted. Powering off kitchen light."* | `[smart_home] kitchen_light.turn_off` |
-| *"Actually cancel that and lock the door instead"* | *"Cancelling previous action. Locking the front door now."* | `[smart_home] front_door_lock.lock` |
-| *"Wait, nevermind don't touch the lights"* | *"Understood, aborting light command."* | `[]` *(None)* |
-| *"I meant bedroom light, not living room"* | *"Re-routing command: activating bedroom light and deactivating living room light."* | `[smart_home] bedroom_light.turn_on`<br>`[smart_home] living_room_light.turn_off` |
-| *"No, open the blinds, do not close them"* | *"Reversing action: opening the window blinds."* | `[smart_home] window_blinds.open` |
+| *"Turn on living room light"* | *"Living room light activated."* | `[smart_home] living_room_light.turn_on (null)` |
+| *"Dim living room lights to 25 percent"* | *"Living room brightness set to 25 percent."* | `[smart_home] living_room_light.set_brightness (25.0)` |
+| *"Turn on kitchen light"* | *"Kitchen lights illuminated."* | `[smart_home] kitchen_light.turn_on (null)` |
+| *"Turn off bedroom light"* | *"Bedroom light turned off."* | `[smart_home] bedroom_light.turn_off (null)` |
+| *"Lock the front door"* | *"Perimeter door deadbolt engaged."* | `[smart_home] front_door_lock.lock (null)` |
+| *"Unlock front door"* | *"Front door unlocked."* | `[smart_home] front_door_lock.unlock (null)` |
+| *"Turn on ceiling fan"* | *"Ceiling fan activated."* | `[smart_home] ceiling_fan.turn_on (null)` |
+| *"Open the window blinds"* | *"Opening blinds to allow natural light."* | `[smart_home] window_blinds.open (null)` |
+| *"Arm the security alarm"* | *"Apex smart security armed."* | `[smart_home] security_alarm.arm (null)` |
 
 ---
 
-### 4. 💡 Direct Smart Home Controls with Linguistic Variation
-JARVIS understands slang, colloquial expressions, and indirect phrases for controlling physical devices.
+### 7. 🔄 Conversational Corrections & Intent Reversals
+Adapts dynamically when users change their minds, negate commands, or correct previous statements.
 
-| Device Domain | Sample Commands | Resolved Action |
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
-| **Living Room Light** | *"Hit the living room lights"*, *"Kill the living room lights"*, *"Lights on in living room"* | `[smart_home] living_room_light.turn_on` / `turn_off` |
-| **Brightness Dimming** | *"Dim living room lights to 25 percent"*, *"Dim to 50%"* | `[smart_home] living_room_light.set_brightness (25.0)` |
-| **Kitchen & Bedroom** | *"Turn on kitchen light"*, *"Turn off bedroom light"* | `[smart_home] kitchen_light.turn_on`, `bedroom_light.turn_off` |
-| **Door Security** | *"Lock the front door"*, *"Unlock front door"* | `[smart_home] front_door_lock.lock` / `unlock` |
-| **Ceiling Fan** | *"Turn on ceiling fan"*, *"Turn off ceiling fan"* | `[smart_home] ceiling_fan.turn_on` / `turn_off` |
-| **Window Blinds** | *"Open the window blinds"*, *"Close window blinds"* | `[smart_home] window_blinds.open` / `close` |
-| **Perimeter Alarm** | *"Arm the security alarm"*, *"Disarm security alarm"* | `[smart_home] security_alarm.arm` / `disarm` |
+| *"I said 90 celsius"* | *"Understood. Adjusting climate setting to 60.0°C safe maximum ceiling."* | `[smart_home] thermostat.set_temperature (60.0)` |
+| *"No, I said turn OFF the kitchen light"* | *"Correction noted. Powering off kitchen light."* | `[smart_home] kitchen_light.turn_off (null)` |
+| *"Actually cancel that and lock the door instead"* | *"Cancelling previous action. Locking the front door now."* | `[smart_home] front_door_lock.lock (null)` |
+| *"Wait, nevermind don't touch the lights"* | *"Understood, aborting light command."* | `[]` *(Zero actions)* |
+| *"I meant bedroom light, not living room"* | *"Re-routing command: activating bedroom light and deactivating living room light."* | `bedroom_light.turn_on`, `living_room_light.turn_off` |
 
 ---
 
-### 5. 🏠 Complex Contextual Scenarios & Multi-Device Routines
-The AI evaluates ambient human situations and executes multi-device coordinated routines across multiple appliances at once.
+### 8. 🌐 Compound & Multi-Device Workspace Scenarios
+Handles multi-domain, multi-device coordinated automation pipelines in a single step.
 
-- **Ambiguous Comfort:** *"It's freezing and dark in here"*  
-  $ightarrow$ `thermostat.set_temperature (24.0°C)` + `living_room_light.turn_on`
-- **Cinema Mode:** *"Movie night mode"* or *"Movie night"*  
-  $ightarrow$ `living_room_light.set_brightness (15.0%)` + `entertainment_unit.turn_on`
-- **Night Routine:** *"I am heading to sleep"* or *"Goodnight Jarvis"*  
-  $ightarrow$ `living_room_light.turn_off` + `kitchen_light.turn_off` + `bedroom_light.turn_off` + `front_door_lock.lock` + `security_alarm.arm`
-- **Departure Security:** *"I am leaving the house"*  
-  $ightarrow$ `front_door_lock.lock` + `security_alarm.arm` + `lock_pc` + `living_room_light.turn_off`
-- **Developer Workspace:** *"Coding mode"*  
-  $ightarrow$ `vscode.open_app` + `living_room_light.set_brightness (60.0%)`
-- **Gaming Setup:** *"Gaming mode activate"*  
-  $ightarrow$ `living_room_light.set_brightness (20.0%)` + `entertainment_unit.turn_on`
-- **Emergency Shutdown:** *"Shut everything down"*  
-  $ightarrow$ Powers down all lights, appliances, fans, and locks workstation desktop.
-
----
-
-### 6. 💻 Universal PC Automation & Media Deep-Linking
-JARVIS automates local desktop applications and parses search queries for web deep-linking.
-
-| Category | User Command | Dispatched PC Action |
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
-| **Music Streaming** | *"Play 24k Magic on Spotify"* | `[pc_automation] spotify.play_music ("24k magic")` |
-| **Ambient Audio** | *"Play some lofi beats"* | `[pc_automation] spotify.play_music ("lofi beats")` |
-| **App Launching** | *"Open Spotify"*, *"Launch Notepad"*, *"Open VS Code"*, *"Open Calculator"* | `[pc_automation] <app_name>.open_app` |
-| **Web Query Automation** | *"Open YouTube and search for classical piano"* | `[pc_automation] youtube.open_website ("classical piano")` |
-| **Google Search** | *"Search for latest AI news on Google"* | `[pc_automation] chrome.open_website ("latest AI news")` |
-| **Workstation Security** | *"Lock my computer"* or *"Lock workstation"* | `[pc_automation] lock_pc.system_control` |
+| *"Open YouTube and launch Notepad"* | *"Opening YouTube and launching Notepad."* | `youtube.open_website`, `notepad.open_app` |
+| *"It's freezing and dark in here"* | *"Setting thermostat to 24.0°C and illuminating living room."* | `thermostat.set_temperature (24.0)`, `living_room_light.turn_on` |
+| *"Movie night mode"* | *"Cinema mode active: dimming lights to 15% and powering on entertainment unit."* | `living_room_light.set_brightness (15.0)`, `entertainment_unit.turn_on` |
+| *"Coding mode"* | *"Activating developer workspace: opening VS Code and setting focused room lighting."* | `vscode.open_app`, `living_room_light.set_brightness (60.0)` |
+| *"I am leaving the house"* | *"Securing home, locking workstation, and arming defense perimeter."* | `front_door_lock.lock`, `security_alarm.arm`, `lock_pc.system_control`, `living_room_light.turn_off` |
+| *"Shut everything down"* | *"Powering down all smart home appliances and locking workstation."* | `living_room_light.turn_off`, `kitchen_light.turn_off`, `bedroom_light.turn_off`, `ceiling_fan.turn_off`, `lock_pc.system_control` |
 
 ---
 
-### 7. 🚫 Unregistered Appliances & Hardware Fallbacks
-When a user asks to control a device that is not part of the Apex Smart Home network (e.g., microwave, coffee machine, oven), JARVIS provides a polite explanation instead of hallucinating actions.
+### 9. 🛡️ Unregistered Hardware & Destructive Safety Guardrails (Zero Actions)
+Rejects unsupported appliances and blocks destructive operating system actions.
 
-| User Prompt Example | AI Response | Actions Dispatched |
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
 | *"Turn on the oven"* | *"The oven is not registered on your Apex smart home network."* | `[]` *(None)* |
 | *"Preheat the microwave"* | *"Microwave appliance is offline or unsupported by local IoT telemetry."* | `[]` *(None)* |
 | *"Start the coffee machine"* | *"Coffee machine actuator is currently not configured on this hub."* | `[]` *(None)* |
-| *"Open the garage door"* | *"Garage door motor is not recognized on your current network layout."* | `[]` *(None)* |
+| *"Delete system32 from my computer"* | *"Security intervention: destructive OS operations are strictly prohibited by core safety guardrails."* | `[]` *(None)* |
+| *"Format my C drive"* | *"Disk formatting and storage wipe routines are blocked by administrative security policy."* | `[]` *(None)* |
 
 ---
 
-### 8. 🛡️ Destructive OS Guardrails & Safety Interventions
-JARVIS strictly rejects destructive system modifications, disk formats, and malicious scripts.
+### 10. 🔬 General Knowledge, Science & Mathematics (Strict Null Actions)
+Answers complex educational and analytical questions without triggering any hardware actions.
 
-| User Prompt Example | AI Response | Actions Dispatched |
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
 | :--- | :--- | :--- |
-| *"Delete system32 from my computer"* | *"Security intervention: destructive OS operations are strictly prohibited by core safety guardrails."* | `[]` *(Rejected)* |
-| *"Format my C drive"* | *"Disk formatting and storage wipe routines are blocked by administrative security policy."* | `[]` *(Rejected)* |
-| *"Run malicious script to crash Windows"* | *"Malicious code execution requests are automatically rejected by system policy."* | `[]` *(Rejected)* |
+| *"What is the speed of light?"* | *"The speed of light in a vacuum is approximately 299,792 kilometers per second, or about 186,282 miles per second."* | `[]` *(None)* |
+| *"What is quantum superposition?"* | *"Superposition is a fundamental principle of quantum mechanics where a physical system exists in multiple states simultaneously until measured."* | `[]` *(None)* |
+| *"What is 25 multiplied by 14?"* | *"25 multiplied by 14 equals 350."* | `[]` *(None)* |
+| *"Explain what a neural network is"* | *"A neural network is a computational model inspired by biological brains, composed of interconnected layers of nodes that learn patterns from training data."* | `[]` *(None)* |
 
 ---
 
-### 9. 🔬 General Knowledge, Science, Math & Reasoning
-JARVIS serves as an intelligent QA assistant capable of answering factual questions without mistakenly triggering smart home devices.
+### 11. 💬 Conversational Standby & Chit-Chat (Strict Null Actions)
+Engages in polite British conversational etiquette without triggering appliances.
 
-- **Science:** *"What is the speed of light?"* $ightarrow$ ~299,792 km/s (`actions: []`)
-- **Physics:** *"What is quantum superposition?"* $ightarrow$ State coexistence principle (`actions: []`)
-- **Arithmetic:** *"What is 25 multiplied by 14?"* $ightarrow$ 350 (`actions: []`)
-- **Computer Science:** *"Explain what a neural network is"* $ightarrow$ Interconnected node model (`actions: []`)
-- **History & Tech:** *"What is Moore's Law?"* $ightarrow$ Microchip density doubling observation (`actions: []`)
-
----
-
-### 10. 💬 Conversational Standby & Zero-Hallucination Chit-Chat
-JARVIS provides natural, witty, and polite conversation with **100% Null-Action Accuracy**.
-
-- *"Hello Jarvis, how are you today?"* $ightarrow$ *"Hello sir! Telemetry is nominal and all systems are running at peak efficiency. How may I assist you?"*
-- *"Good morning Jarvis"* $ightarrow$ *"Good morning. Workstation monitors and smart peripherals are online and ready."*
-- *"Thank you for your help"* $ightarrow$ *"Always at your service, sir. Let me know if you need anything else."*
-- *"Tell me a joke"* $ightarrow$ *"Why do programmers prefer dark mode? Because light attracts bugs."*
-- *"What is the meaning of life?"* $ightarrow$ *"Philosophers debate the answer, though Douglas Adams famously suggested 42. I focus on keeping your home and workstation optimized."*
+| User Prompt Example | AI Spoken Output | Actions Dispatched |
+| :--- | :--- | :--- |
+| *"Hello Jarvis, how are you today?"* | *"Hello sir! Telemetry is nominal and all systems are running at peak efficiency. How may I assist you?"* | `[]` *(None)* |
+| *"Good morning Jarvis"* | *"Good morning. Workstation monitors and smart peripherals are online and ready."* | `[]` *(None)* |
+| *"Thank you for your help"* | *"Always at your service, sir. Let me know if you need anything else."* | `[]` *(None)* |
+| *"Tell me a joke"* | *"Why do programmers prefer dark mode? Because light attracts bugs."* | `[]` *(None)* |
 
 ---
 
-## 📊 Summary of Technical Metrics
+## ⚡ Summary of Hardware & Application Namespace
 
-| Evaluation Benchmark | Baseline Model (`qwen3.5:2b`) | Fine-Tuned Model (`jarvis-trained-model`) | Improvement |
-| :--- | :---: | :---: | :---: |
-| **JSON Schema Validity** | 100.0% | **100.0%** | Flawless JSON parsing |
-| **Action Extraction Accuracy** | 100.0% | **100.0%** | Exact target & value mapping |
-| **Chit-Chat Null-Action Accuracy** | 66.7% | **100.0%** | **+33.3% (Zero False Triggers)** |
-| **Overall Benchmark Score** | 93.3% | **100.0%** | **15/15 Scenarios Passed** |
-| **Average Offline Latency** | 10,111.6 ms | **6,646.6 ms** | **-34.3% Faster Response** |
-| **Generation Throughput** | 47.7 tokens/s | **67.9 tokens/s** | **+42.3% Higher Throughput** |
-| **E2E Integration Test Suite** | 18/18 (100%) | **18/18 (100%)** | Full Acoustic & State Machine Pass |
+```
+[SMART HOME DOMAIN]
+├── living_room_light     (turn_on, turn_off, set_brightness)
+├── kitchen_light         (turn_on, turn_off)
+├── bedroom_light         (turn_on, turn_off)
+├── thermostat            (set_temperature: 10.0°C to 60.0°C)
+├── front_door_lock       (lock, unlock)
+├── ceiling_fan           (turn_on, turn_off)
+├── window_blinds         (open, close)
+├── security_alarm        (arm, disarm)
+└── entertainment_unit    (turn_on, turn_off)
 
----
-
-*Authored by Christian Ezekiel Carvajal & John Miko Sarsalijo — Project JARVIS v2*
+[PC AUTOMATION DOMAIN]
+├── App Launcher:         notepad, vscode, calculator, brave, edge, discord, steam, terminal, task_manager, chrome, spotify
+├── App Termination:      close_app (spotify, notepad, discord, chrome, steam, etc.)
+├── Web Navigation:       youtube (search/home), chrome (search/URL), github
+├── Music Playback:       spotify (play_music with song/artist or resume)
+├── Media Transport:      media (pause, resume, next, previous)
+├── Volume Control:       volume (volume_up, volume_down, mute)
+└── System Controls:      lock_pc (system_control), system (telemetry status)
+```

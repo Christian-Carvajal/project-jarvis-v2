@@ -10,6 +10,25 @@ Features:
 
 import os
 import sys
+import warnings
+
+# Suppress HuggingFace Hub unauthenticated / symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+warnings.filterwarnings("ignore", message=".*cache-system uses symlinks.*")
+
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 import time
 import json
 import logging
@@ -49,7 +68,7 @@ class JarvisVirtualAssistant:
 
     def __init__(self):
         print("================================================================")
-        print("  ⚡ PROJECT JARVIS — 2-TURN AGENTIC AI WORKSTATION (Qwen 3.5:2B)")
+        print("  [+] PROJECT JARVIS - 2-TURN AGENTIC AI WORKSTATION (jarvis-trained-model)")
         print("  100% Offline | Pure Agentic Local LLM | British JARVIS Voice")
         print("================================================================")
 
@@ -179,15 +198,20 @@ class JarvisVirtualAssistant:
             self.gui.after(0, lambda: self.gui.log_console(f"User Command: \"{prompt}\""))
             self.gui.after(0, lambda: self.gui.update_status(f"Reasoning ({self.ai.model_name})...", "#E040FB"))
 
-        # 1. Pure LLM Intent Extraction (Zero hardcoded regex)
-        intent: AssistantIntentResponse = self.ai.parse_command(prompt)
+        # 1. Live Hardware Telemetry Injection & Pure LLM Intent Extraction
+        live_summary = self.state_machine.get_summary_text()
+        intent: AssistantIntentResponse = self.ai.parse_command(prompt, live_state=live_summary)
         latency_ms = (time.time() - start_time) * 1000
 
         print(f"[INTENT IDENTIFIED]: {intent.interpreted_intent}")
+        if intent.reasoning:
+            print(f"[CHAIN-OF-THOUGHT REASONING]: {intent.reasoning}")
         print(f"[ACTIONS PLANNED]: {len(intent.actions)} action(s)")
 
         if hasattr(self, 'gui') and self.gui:
             self.gui.after(0, lambda: self.gui.update_latency(latency_ms))
+            if intent.reasoning:
+                self.gui.after(0, lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
             self.gui.after(0, lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
 
         # 2. Dispatch Actions

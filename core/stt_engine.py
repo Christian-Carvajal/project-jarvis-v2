@@ -1,6 +1,26 @@
+import os
+import sys
+import warnings
+
+# Suppress HuggingFace Hub unauthenticated / symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
+warnings.filterwarnings("ignore", message=".*cache-system uses symlinks.*")
+
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 import asyncio
 import tempfile
-import os
 import re
 import time
 import threading
@@ -181,7 +201,51 @@ class STTEngine:
         else:
             print("[STT Engine]: High-Speed Cloud & Studio STT Engine initialized (Sub-200ms, zero memory load).")
 
+<<<<<<< HEAD
     def record_mic_audio(self, duration: float = 4.0, target_sr: int = 16000) -> Optional[sr.AudioData]:
+=======
+    # ------------------------------------------------------------------
+    # Model initialisation
+    # ------------------------------------------------------------------
+
+    def _init_whisper_model(self):
+        """Initialises WhisperModel with CUDA float16 acceleration and CPU int8 fallback."""
+        if not HAS_FASTER_WHISPER:
+            return None
+
+        # Attempt CUDA GPU offloading
+        has_cuda = (
+            hasattr(ctranslate2, "get_cuda_device_count")
+            and ctranslate2.get_cuda_device_count() > 0
+        )
+        if has_cuda:
+            try:
+                print(f"[STT Engine]: Initialising Whisper '{self.model_size}' on CUDA (float16)...")
+                model = WhisperModel(self.model_size, device="cuda", compute_type="float16")
+                # Warm-up inference to verify cuBLAS loads cleanly
+                dummy = np.zeros(8000, dtype=np.float32)
+                list(model.transcribe(dummy)[0])
+                print("[STT Engine]: [+] GPU acceleration active!")
+                return model
+            except Exception as err:
+                print(f"[STT Engine]: CUDA init failed ({err}) - falling back to CPU int8.")
+
+        # CPU int8 fallback
+        try:
+            print(f"[STT Engine]: Initialising Whisper '{self.model_size}' on CPU (int8)...")
+            model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
+            print("[STT Engine]: [+] CPU int8 Whisper model ready.")
+            return model
+        except Exception as ex:
+            print(f"[STT Error: Whisper init deferred ({ex}).]")
+            return None
+
+    # ------------------------------------------------------------------
+    # Audio capture
+    # ------------------------------------------------------------------
+
+    def record_mic_audio(self, duration: float = 4.0) -> Optional[sr.AudioData]:
+>>>>>>> c1804ac35a4ec2029e52139fcf0e8a37385eb156
         """
         Studio-grade microphone capture with:
           1. Streaming from verified hardware device at its native sample rate and channels.

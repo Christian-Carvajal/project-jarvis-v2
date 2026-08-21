@@ -90,11 +90,21 @@ class SmartThermostat(SmartDevice):
         self.mode = mode
 
     def set_temperature(self, temp: float):
-        # Support extended temperature range (10.0°C to 60.0°C)
-        self.target_temp = max(10.0, min(60.0, float(temp)))
-        if self.target_temp > self.ambient_temp + 1.0:
+        t_val = float(temp)
+        # If model outputs Fahrenheit comfort values (65°F to 89°F), convert to integer Celsius (18°C to 30°C)
+        if 65.0 <= t_val <= 89.0:
+            c_conv = (t_val - 32.0) * 5.0 / 9.0
+            t_val = round(c_conv)
+            if 70.0 <= float(temp) <= 75.0 and t_val <= int(self.ambient_temp):
+                t_val = int(self.ambient_temp) + 2  # Boost to comfortable heating (e.g. 24°C)
+        else:
+            t_val = round(t_val)
+
+        # Support extended temperature safety range (10°C to 60°C) with pure whole integer display (no decimals)
+        self.target_temp = float(max(10, min(60, int(t_val))))
+        if self.target_temp > self.ambient_temp + 0.5:
             self.mode = "HEAT"
-        elif self.target_temp < self.ambient_temp - 1.0:
+        elif self.target_temp < self.ambient_temp - 0.5:
             self.mode = "COOL"
         else:
             self.mode = "AUTO"
@@ -112,10 +122,10 @@ class SmartThermostat(SmartDevice):
             "device_id": self.device_id,
             "name": self.name,
             "room": self.room,
-            "target_temp": self.target_temp,
-            "ambient_temp": self.ambient_temp,
+            "target_temp": int(round(self.target_temp)),
+            "ambient_temp": int(round(self.ambient_temp)),
             "mode": self.mode,
-            "status_text": f"{self.target_temp:.1f}°C"
+            "status_text": f"{int(round(self.target_temp))}°C"
         }
 
 
@@ -240,8 +250,8 @@ class SmartBlinds(SmartDevice):
         super().__init__(device_id, name, room)
         self.position = 100
 
-    def open(self):
-        self.position = 100
+    def open(self, position: int = 100):
+        self.position = max(0, min(100, position))
         self.last_updated = datetime.now()
 
     def close(self):
@@ -275,6 +285,7 @@ class SmartHomeStateMachine:
 
     def __init__(self, log_filepath: str = "assistant_execution.log"):
         self.log_filepath = log_filepath
+        self.last_queried_device: str = "bedroom_light"
         self.devices: Dict[str, SmartDevice] = {
             "living_room_light": SmartLight("living_room_light", "Living Room Light", "living_room", brightness=0),
             "kitchen_light": SmartLight("kitchen_light", "Kitchen Light", "kitchen", brightness=0),
@@ -286,6 +297,105 @@ class SmartHomeStateMachine:
             "ceiling_fan": SmartFan("ceiling_fan", "Ceiling Fan", "living_room"),
             "window_blinds": SmartBlinds("window_blinds", "Window Blinds", "living_room")
         }
+
+    def get_summary_text(self) -> str:
+        """Returns a concise text summary of all device states for LLM context and status queries."""
+        items = []
+        for d_id, dev in self.devices.items():
+            state = dev.get_state()
+            items.append(f"{dev.name}: {state.get('status_text', 'UNKNOWN')}")
+        return ", ".join(items)
+
+    def query_device_status(self, query: str) -> Optional[str]:
+        """
+        Directly queries and returns natural spoken status of a requested smart home device.
+        Handles queries like 'is the bedroom light on', 'is the front door locked', etc.
+        """
+        q = query.lower().strip()
+        is_query_intent = any(k in q for k in [
+            "is the", "is it", "are the", "are any", "status", "check", "tell me if",
+            "what is", "how is", "open or", "on or", "locked or", "closed or", "open on", "?"
+        ]) or q.startswith("is ") or q.startswith("are ") or q.startswith("what ")
+
+        if not is_query_intent and not any(k in q for k in ["status", "telemetry", "state"]):
+            return None
+
+        # 1. Specific Room Lights
+        if "bedroom" in q:
+            self.last_queried_device = "bedroom_light"
+            dev = self.devices["bedroom_light"]
+            return f"The bedroom light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        if "kitchen" in q:
+            self.last_queried_device = "kitchen_light"
+            dev = self.devices["kitchen_light"]
+            return f"The kitchen light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        if "living room" in q or "livingroom" in q:
+            self.last_queried_device = "living_room_light"
+            dev = self.devices["living_room_light"]
+            return f"The living room light is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+
+        # 2. General / All Lights
+        if "light" in q or "lights" in q:
+            on_lights = [d.name for d in self.devices.values() if isinstance(d, SmartLight) and d.is_on]
+            if on_lights:
+                return f"Currently, {', '.join(on_lights)} {'is' if len(on_lights)==1 else 'are'} on, sir."
+            return "All smart lights in the house are currently powered off, sir."
+
+        # 3. Thermostat / Temperature / Climate
+        if any(w in q for w in ["thermostat", "temp", "temperature", "climate", "ac", "degrees"]):
+            self.last_queried_device = "thermostat"
+            dev = self.devices["thermostat"]
+            return f"The thermostat is currently set to {dev.target_temp:.1f}°C in {dev.mode} mode, with an ambient temperature of {dev.ambient_temp:.1f}°C."
+
+        # 4. Front Door Lock
+        if any(w in q for w in ["door", "front door", "deadbolt", "lock"]):
+            self.last_queried_device = "front_door_lock"
+            dev = self.devices["front_door_lock"]
+            return f"The front door is currently {'locked and secured' if dev.is_locked else 'unlocked'}, sir."
+
+        # 5. Security Alarm
+        if any(w in q for w in ["alarm", "security", "perimeter", "defense"]):
+            self.last_queried_device = "security_alarm"
+            dev = self.devices["security_alarm"]
+            return f"The security alarm system is currently {dev.mode.lower()}, sir."
+
+        # 6. Ceiling Fan
+        if any(w in q for w in ["fan", "ceiling fan"]):
+            self.last_queried_device = "ceiling_fan"
+            dev = self.devices["ceiling_fan"]
+            return f"The ceiling fan is currently {dev.speed.lower()}, sir."
+
+        # 7. Window Blinds
+        if any(w in q for w in ["blind", "blinds", "window", "curtain"]):
+            self.last_queried_device = "window_blinds"
+            dev = self.devices["window_blinds"]
+            return f"The window blinds are currently {'open at ' + str(dev.position) + '%' if dev.position > 0 else 'closed'}, sir."
+
+        # 8. Entertainment Unit
+        if any(w in q for w in ["entertainment", "tv", "display", "theater"]):
+            self.last_queried_device = "entertainment_unit"
+            dev = self.devices["entertainment_unit"]
+            return f"The entertainment unit is currently {'active' if dev.is_active else 'powered off'}, sir."
+
+        # 9. Contextual pronoun follow-up ('is it open', 'is it on or off', 'is it open or not')
+        if any(w in q for w in ["is it", "it is", "open or not", "on or off", "locked or"]):
+            dev = self.devices.get(self.last_queried_device, self.devices["bedroom_light"])
+            if isinstance(dev, SmartLight):
+                return f"The {dev.name.lower()} is currently {'on at ' + str(dev.brightness) + '% brightness' if dev.is_on else 'powered off'}, sir."
+            elif isinstance(dev, SmartLock):
+                return f"The {dev.name.lower()} is currently {'locked and secured' if dev.is_locked else 'unlocked'}, sir."
+            elif isinstance(dev, SmartBlinds):
+                return f"The {dev.name.lower()} are currently {'open at ' + str(dev.position) + '%' if dev.position > 0 else 'closed'}, sir."
+            elif isinstance(dev, SmartThermostat):
+                return f"The thermostat is currently set to {dev.target_temp:.1f}°C in {dev.mode} mode, with an ambient temperature of {dev.ambient_temp:.1f}°C."
+
+        # 10. General House Overview / Status
+        if any(w in q for w in ["house status", "home status", "telemetry", "everything", "overview", "what is on"]):
+            return f"Smart home status overview: {self.get_summary_text()}."
+
+        return None
 
     def apply_action(self, target_or_dict: Any, action: Optional[str] = None, value: Any = None) -> str:
         """Applies an action to matching devices via dictionary or positional arguments."""
@@ -304,94 +414,151 @@ class SmartHomeStateMachine:
         act = str(action_dict.get("action", "")).lower().strip()
         val = action_dict.get("value")
 
+        t_clean = raw_target.replace(" ", "_").replace("-", "_")
+
         targets_to_modify = []
-        if raw_target in ["all_lights", "lights", "house_lights", "all"]:
+        if t_clean in ["all_lights", "lights", "house_lights", "all", "all_light"]:
             targets_to_modify = [d for d in self.devices.values() if isinstance(d, SmartLight)]
-        elif raw_target in self.devices:
-            targets_to_modify = [self.devices[raw_target]]
+        elif t_clean in self.devices:
+            targets_to_modify = [self.devices[t_clean]]
+        elif "kitchen" in t_clean:
+            targets_to_modify = [self.devices["kitchen_light"]]
+        elif "bedroom" in t_clean:
+            targets_to_modify = [self.devices["bedroom_light"]]
+        elif "living" in t_clean:
+            targets_to_modify = [self.devices["living_room_light"]]
+        elif any(k in t_clean for k in ["thermostat", "temp", "climate", "ac", "degrees"]):
+            targets_to_modify = [self.devices["thermostat"]]
+        elif any(k in t_clean for k in ["door", "lock", "front_door", "deadbolt"]):
+            targets_to_modify = [self.devices["front_door_lock"]]
+        elif any(k in t_clean for k in ["alarm", "security", "perimeter"]):
+            targets_to_modify = [self.devices["security_alarm"]]
+        elif any(k in t_clean for k in ["fan", "ceiling"]):
+            targets_to_modify = [self.devices["ceiling_fan"]]
+        elif any(k in t_clean for k in ["blind", "blinds", "window", "curtain"]):
+            targets_to_modify = [self.devices["window_blinds"]]
+        elif any(k in t_clean for k in ["entertainment", "tv", "display", "theater"]):
+            targets_to_modify = [self.devices["entertainment_unit"]]
         else:
             for d_id, dev in self.devices.items():
-                if d_id in raw_target or raw_target in d_id:
+                if d_id in t_clean or t_clean in d_id:
                     targets_to_modify.append(dev)
 
         if not targets_to_modify:
-            if "light" in raw_target:
+            if "light" in t_clean:
                 targets_to_modify = [self.devices["living_room_light"]]
-            elif "temp" in raw_target or "thermostat" in raw_target or "climate" in raw_target:
+            elif "temp" in t_clean or "thermostat" in t_clean:
                 targets_to_modify = [self.devices["thermostat"]]
-            elif "door" in raw_target or "lock" in raw_target:
+            elif "door" in t_clean or "lock" in t_clean:
                 targets_to_modify = [self.devices["front_door_lock"]]
-            elif "alarm" in raw_target or "security" in raw_target:
+            elif "alarm" in t_clean or "security" in t_clean:
                 targets_to_modify = [self.devices["security_alarm"]]
 
         transitions = []
         for dev in targets_to_modify:
             if isinstance(dev, SmartLight):
                 old = f"ON ({dev.brightness}%)" if dev.is_on else "OFF"
-                if act in ["turn_on", "on", "activate"]:
-                    dev.turn_on(brightness=int(val) if val and str(val).isdigit() else 100)
-                elif act in ["turn_off", "off", "deactivate"]:
+                is_turn_off = (
+                    any(k in act for k in ["off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken"])
+                    or (val is not None and (val == 0 or str(val) == "0" or str(val).lower() in ["off", "0%"]))
+                )
+                is_turn_on = any(k in act for k in ["on", "activate", "enable", "illuminate", "light"])
+                is_brightness = any(k in act for k in ["brightness", "dim", "brighten", "level", "set"])
+
+                if is_turn_off:
                     dev.turn_off()
-                elif act in ["set_brightness", "dim", "brighten"] and val is not None:
+                elif is_turn_on:
+                    b_val = 100
+                    if val is not None and str(val).isdigit():
+                        b_val = int(val)
+                    dev.turn_on(brightness=b_val)
+                elif is_brightness and val is not None:
                     try:
-                        dev.set_brightness(int(val))
+                        b_int = int(val)
+                        if b_int <= 0:
+                            dev.turn_off()
+                        else:
+                            dev.set_brightness(b_int)
                     except Exception:
+                        dev.turn_on(100)
+                else:
+                    if "toggle" in act:
+                        dev.toggle()
+                    else:
                         dev.turn_on(100)
                 transitions.append(f"{dev.name}: {old} -> {'ON (' + str(dev.brightness) + '%)' if dev.is_on else 'OFF'}")
 
             elif isinstance(dev, SmartThermostat):
-                old = f"{dev.target_temp:.1f}°C ({dev.mode})"
+                old = f"{int(round(dev.target_temp))}°C ({dev.mode})"
                 if val is not None:
                     try:
                         dev.set_temperature(float(val))
                     except Exception:
                         dev.set_temperature(24.0)
-                elif "warm" in act or "heat" in act or "increase" in act:
+                elif any(k in act for k in ["warm", "heat", "increase", "raise", "up", "turn_on", "on"]):
                     dev.set_temperature(dev.target_temp + 2.0)
-                elif "cool" in act or "decrease" in act:
+                elif any(k in act for k in ["cool", "decrease", "lower", "drop", "down", "turn_off", "off"]):
                     dev.set_temperature(dev.target_temp - 2.0)
-                transitions.append(f"{dev.name}: {old} -> {dev.target_temp:.1f}°C ({dev.mode})")
+                transitions.append(f"{dev.name}: {old} -> {int(round(dev.target_temp))}°C ({dev.mode})")
 
             elif isinstance(dev, SmartLock):
                 old = "LOCKED" if dev.is_locked else "UNLOCKED"
-                if act in ["lock", "close"]:
+                if any(k in act for k in ["unlock", "open", "unsecure", "disengage"]):
+                    dev.unlock()
+                elif any(k in act for k in ["lock", "secure", "close", "engage"]):
                     dev.lock()
                 else:
-                    dev.unlock()
+                    dev.lock()
                 transitions.append(f"{dev.name}: {old} -> {'LOCKED' if dev.is_locked else 'UNLOCKED'}")
 
             elif isinstance(dev, EntertainmentUnit):
                 old = "ACTIVE" if dev.is_active else "OFF"
-                if act in ["turn_on", "play"]:
-                    dev.turn_on()
-                else:
+                if any(k in act for k in ["off", "stop", "deactivate", "standby", "close", "shut"]):
                     dev.turn_off()
+                elif any(k in act for k in ["on", "start", "activate", "play", "open", "launch"]):
+                    dev.turn_on(app=str(val) if val else "YouTube")
+                else:
+                    dev.turn_on()
                 transitions.append(f"{dev.name}: {old} -> {'ACTIVE' if dev.is_active else 'OFF'}")
 
             elif isinstance(dev, SecurityAlarm):
                 old = dev.mode
-                if act == "disarm":
+                if any(k in act for k in ["disarm", "off", "deactivate", "disable", "stop"]):
                     dev.disarm()
+                elif any(k in act for k in ["arm", "on", "activate", "enable"]):
+                    dev.arm(str(val) if val else "ARMED_AWAY")
                 else:
-                    dev.arm(str(val) if val else "ARMED_NIGHT")
+                    dev.arm("ARMED_AWAY")
                 transitions.append(f"{dev.name}: {old} -> {dev.mode}")
 
             elif isinstance(dev, SmartFan):
                 old = dev.speed
-                if act == "turn_off":
+                is_fan_off = (
+                    any(k in act for k in ["off", "stop", "deactivate", "disable", "shut"])
+                    or val in [0, "0", "0%", "off", "OFF", 0.0]
+                    or (str(val).isdigit() and int(val) == 0)
+                )
+                if is_fan_off:
                     dev.turn_off()
+                elif any(k in act for k in ["on", "start", "activate", "speed", "set"]):
+                    spd = str(val).upper() if val and str(val).upper() in ["LOW", "MEDIUM", "HIGH"] else "HIGH"
+                    dev.set_speed(spd)
                 else:
-                    dev.set_speed(str(val) if val else "HIGH")
+                    dev.set_speed("HIGH")
                 transitions.append(f"{dev.name}: {old} -> {dev.speed}")
 
             elif isinstance(dev, SmartBlinds):
                 old = f"{dev.position}%"
-                if act == "close":
+                if any(k in act for k in ["close", "shut", "down", "lower", "off", "turn_off", "deactivate"]) or val == 0:
                     dev.close()
-                elif act == "open":
-                    dev.open()
-                elif act == "set_position" and val is not None:
-                    dev.set_position(int(val))
+                elif any(k in act for k in ["open", "up", "raise", "on", "turn_on", "activate"]):
+                    pos = int(val) if val and str(val).isdigit() else 100
+                    dev.open(position=pos)
+                elif val is not None:
+                    try:
+                        dev.set_position(int(val))
+                    except Exception:
+                        dev.open()
                 transitions.append(f"{dev.name}: {old} -> {dev.position}%")
 
         return "; ".join(transitions) if transitions else f"No transition for {raw_target}"
@@ -1328,8 +1495,8 @@ class ModernHomeDashboard(tk.Tk):
 
             elif isinstance(dev, SmartThermostat):
                 temp_color = self.THEME["accent_amber"] if dev.mode == "HEAT" else (self.THEME["accent_cyan"] if dev.mode == "COOL" else self.THEME["accent_green"])
-                widgets["status_lbl"].config(text=f"{dev.target_temp:.1f}°C", fg=temp_color)
-                widgets["detail_lbl"].config(text=f"Ambient: {dev.ambient_temp:.1f}°C | Mode: {dev.mode}")
+                widgets["status_lbl"].config(text=f"{int(round(dev.target_temp))}°C", fg=temp_color)
+                widgets["detail_lbl"].config(text=f"Ambient: {int(round(dev.ambient_temp))}°C | Mode: {dev.mode}")
                 widgets["card"].config(bg=self.THEME["card_active"] if dev.mode != "AUTO" else self.THEME["card_bg"])
 
             elif isinstance(dev, SmartLock):
