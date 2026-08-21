@@ -12,7 +12,7 @@ import shutil
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
-def create_submission_zip(last_name1: str = "Smith", last_name2: str = "Doe"):
+def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsalijo"):
     zip_name = f"AI_PrelimExam_Group_{last_name1}_{last_name2}.zip"
     zip_path = os.path.join(PROJECT_ROOT, zip_name)
 
@@ -43,6 +43,18 @@ def create_submission_zip(last_name1: str = "Smith", last_name2: str = "Doe"):
                         rel_path = os.path.relpath(file_path, PROJECT_ROOT)
                         zf.write(file_path, rel_path)
                         print(f"  + Added: {rel_path}")
+            if item == "Prelim_Project_Report.pdf":
+                pdf_candidates = [
+                    "Prelim_Project_Report_Final.pdf",
+                    "Prelim_Project_Report_v2.pdf",
+                    "Prelim_Project_Report.pdf",
+                    "test_report.pdf"
+                ]
+                chosen = next((c for c in pdf_candidates if os.path.exists(os.path.join(PROJECT_ROOT, c))), None)
+                if chosen:
+                    item_path = os.path.join(PROJECT_ROOT, chosen)
+                    zf.write(item_path, "Prelim_Project_Report.pdf")
+                    print(f"  + Added: Prelim_Project_Report.pdf (from {chosen})")
             else:
                 zf.write(item_path, item)
                 print(f"  + Added: {item}")
@@ -52,6 +64,6 @@ def create_submission_zip(last_name1: str = "Smith", last_name2: str = "Doe"):
 
 
 if __name__ == "__main__":
-    name1 = sys.argv[1] if len(sys.argv) > 1 else "Malitao"
-    name2 = sys.argv[2] if len(sys.argv) > 2 else "Student"
+    name1 = sys.argv[1] if len(sys.argv) > 1 else "Carvajal"
+    name2 = sys.argv[2] if len(sys.argv) > 2 else "Sarsalijo"
     create_submission_zip(name1, name2)

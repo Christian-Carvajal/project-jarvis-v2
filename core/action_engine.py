@@ -363,9 +363,19 @@ class ActionEngine:
 
 
 
+    def open_youtube_homepage(self) -> Tuple[bool, str]:
+        """Opens YouTube homepage without searching for anything."""
+        webbrowser.open_new("https://www.youtube.com")
+        if PYAUTOGUI_AVAILABLE:
+            pyautogui.sleep(1.5)
+            self.focus_process_window("brave") or self.focus_process_window("chrome") or self.focus_process_window("msedge")
+        return True, "Opening YouTube."
+
     def play_on_youtube(self, query: str = "") -> Tuple[bool, str]:
         """Navigates YouTube, focuses browser process window, and plays top video match."""
-        clean_query = self.sanitize_query(query) or "trending music videos"
+        clean_query = self.sanitize_query(query)
+        if not clean_query:
+            return self.open_youtube_homepage()
         encoded_query = urllib.parse.quote(clean_query)
 
         url = f"https://www.youtube.com/results?search_query={encoded_query}"
@@ -532,10 +542,18 @@ class ActionEngine:
 
 
         # 1. YouTube Intents
-        if "youtube" in cmd_lower and any(kw in cmd_lower for kw in ["play", "plaly", "plaay", "watch", "search", "open", "go to"]):
-            raw_target = re.sub(r'.*?(?:play|plaly|plaay|watch|search|open|go to)\s*', '', cmd_lower, flags=re.IGNORECASE)
+        # "open youtube" / "go to youtube" alone = launch homepage only (no search)
+        # "play X on youtube" / "watch X on youtube" / "search X on youtube" = search + play
+        _yt_bare_open = re.fullmatch(r'(?:open|go to|launch|start)\s+(?:you\s*tube|yt)', cmd_lower.strip())
+        if "youtube" in cmd_lower and any(kw in cmd_lower for kw in ["play", "plaly", "plaay", "watch", "search"]):
+            raw_target = re.sub(r'.*?(?:play|plaly|plaay|watch|search)\s*', '', cmd_lower, flags=re.IGNORECASE)
             raw_target = re.sub(r'\s*on\s+youtube.*$', '', raw_target, flags=re.IGNORECASE).strip()
+            # Guard: if nothing left after stripping (e.g. "play youtube"), open homepage instead
+            if not raw_target or raw_target in ["youtube", "you tube", "yt"]:
+                return self.open_youtube_homepage()
             return self.play_on_youtube(raw_target)
+        elif _yt_bare_open or ("youtube" in cmd_lower and any(kw in cmd_lower for kw in ["open", "go to"]) and not any(kw in cmd_lower for kw in ["play", "watch", "search"])):
+            return self.open_youtube_homepage()
 
         # 2. Spotify Intents
         if "spotify" in cmd_lower and any(kw in cmd_lower for kw in ["play", "plaly", "plaay", "playy", "plai", "listen", "search", "serch", "open"]):

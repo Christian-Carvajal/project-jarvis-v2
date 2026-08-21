@@ -336,6 +336,16 @@ class AgentPlanner:
             lambda query: self._tool_spotify_queue(query)
         )
 
+        # 12. youtube_open
+        self.registry.register(
+            ToolDefinition(
+                name="youtube_open",
+                description="Opens the YouTube homepage in the browser without searching or playing anything. Use ONLY for bare 'open youtube' commands.",
+                input_schema={"type": "object", "properties": {}}
+            ),
+            lambda: self._tool_youtube_open()
+        )
+
     # ---------------- TOOL EXECUTORS & VERIFIERS ----------------
 
     def _tool_open_app(self, app_name: str) -> ToolResult:
@@ -343,6 +353,18 @@ class AgentPlanner:
         if success:
             self.state.active_app = self.app_resolver.normalize_name(app_name)
         return ToolResult(success=success, tool_name="open_application", message=msg, data={"app": app_name})
+
+    def _tool_youtube_open(self) -> ToolResult:
+        """Opens YouTube homepage in the browser without any search query."""
+        import webbrowser
+        webbrowser.open_new("https://www.youtube.com")
+        self.state.active_app = "youtube"
+        return ToolResult(
+            success=True,
+            tool_name="youtube_open",
+            message="Opening YouTube.",
+            data={"url": "https://www.youtube.com"}
+        )
 
     def _tool_close_app(self, app_name: str) -> ToolResult:
         proc_exe = self.app_resolver.KNOWN_MAPPINGS.get(app_name.lower(), f"{app_name}.exe")
@@ -663,6 +685,9 @@ class AgentPlanner:
         if cmd.intent == "OPEN_APPLICATION":
             if cmd.provider == "spotify":
                 steps.append(ToolStep(tool="spotify_open", arguments={}))
+            elif cmd.provider == "youtube":
+                # "open youtube" → homepage only, never search
+                steps.append(ToolStep(tool="youtube_open", arguments={}))
             else:
                 steps.append(ToolStep(tool="open_application", arguments={"application": cmd.provider or "spotify"}))
 
