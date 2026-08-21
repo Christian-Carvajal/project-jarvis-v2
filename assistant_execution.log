@@ -270,3 +270,29 @@ PARSED JSON PAYLOAD:
 STATE TRANSITIONS: PC Action: Launched Spotify Application.
 EXECUTION LATENCY: 6671.27 ms (6.67 s)
 ======================================================================
+
+======================================================================
+TIMESTAMP: 2026-08-21T14:55:07.584200
+VOICE TRANSCRIPTION: "search on youtube mr beaast"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Searching YouTube for 'mr beaast'.",
+  "actions": [
+    {
+      "domain": "youtube",
+      "device_or_target": "living_room_light",
+      "action": "web_search",
+      "value": "mr beaast"
+    }
+  ],
+  "reasoning": "The user is asking me to search YouTube for \"mr beaast\". This is a straightforward search request.\n\nAccording to my instructions, I must NOT hallucinate or make up search queries, song names, artists, or parameters. The user explicitly stated what they want me to search for: \"mr beaast\".\n\nI should parse this request into structured JSON actions and execute it without making up any additional information.\n\nAction: Search YouTube for \"mr beaast\"\nValue: null (no additional query specified beyond the search term)\n\nLet me format this properly.",
+  "raw_prompt": "search on youtube mr beaast",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 121,
+  "eval_count": 155,
+  "eval_duration_ms": 2258.637
+}
+STATE TRANSITIONS: None
+EXECUTION LATENCY: 6679.16 ms (6.68 s)
+======================================================================
