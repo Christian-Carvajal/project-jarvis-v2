@@ -463,6 +463,48 @@ class AssistantIntentResponse(BaseModel):
 
             values["spoken_response"] = spoken
 
+        # Ensure spoken_response is a pure human-readable dialogue string without JSON keys
+        raw_spoken = values.get("spoken_response")
+        if raw_spoken is not None:
+            raw_s = str(raw_spoken).strip()
+            # If spoken_response was serialized JSON e.g. '{"spoken_response": "..."}'
+            for _ in range(5):
+                if raw_s.startswith("{") and raw_s.endswith("}"):
+                    try:
+                        inner_data = json.loads(raw_s)
+                        if isinstance(inner_data, dict):
+                            if "spoken_response" in inner_data:
+                                raw_s = str(inner_data["spoken_response"]).strip()
+                            elif "response" in inner_data:
+                                raw_s = str(inner_data["response"]).strip()
+                            elif "message" in inner_data:
+                                raw_s = str(inner_data["message"]).strip()
+                    except Exception:
+                        pass
+                else:
+                    break
+
+            # Strip any residual JSON keys, brackets or quotes repeatedly
+            for _ in range(10):
+                found = False
+                for token in [
+                    '"spoken_response":', "'spoken_response':", 'spoken_response":', "spoken_response':", 'spoken_response:',
+                    '"response":', "'response':", 'response":', "response':", 'response:',
+                    '"message":', "'message':", 'message":', "message':", 'message:',
+                    '"spoken_actions":', "'spoken_actions':", 'spoken_actions":', 'spoken_actions:',
+                    '"actions":', "'actions':", 'actions":', 'actions:'
+                ]:
+                    if token in raw_s:
+                        idx = raw_s.find(token) + len(token)
+                        raw_s = raw_s[idx:].strip(' \t\n\r"\'{},[]')
+                        found = True
+                if not found:
+                    break
+
+            # Clean any wrapping quotes or brackets
+            raw_s = raw_s.strip('{}[]"\' \t\n\r')
+            values["spoken_response"] = raw_s if raw_s else "Executing command, sir."
+
         if not values.get("interpreted_intent"):
             values["interpreted_intent"] = "agentic_action_plan"
 

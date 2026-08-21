@@ -245,6 +245,42 @@ class JarvisVirtualAssistant:
 
         # 4. Spoken Response
         spoken = intent.spoken_response
+        if spoken:
+            spoken_clean = str(spoken).strip()
+            for _ in range(5):
+                if spoken_clean.startswith("{") and spoken_clean.endswith("}"):
+                    try:
+                        data = json.loads(spoken_clean)
+                        if isinstance(data, dict):
+                            if "spoken_response" in data:
+                                spoken_clean = str(data["spoken_response"]).strip()
+                            elif "response" in data:
+                                spoken_clean = str(data["response"]).strip()
+                            elif "message" in data:
+                                spoken_clean = str(data["message"]).strip()
+                    except Exception:
+                        break
+                else:
+                    break
+
+            for _ in range(10):
+                found = False
+                for token in [
+                    '"spoken_response":', "'spoken_response':", 'spoken_response":', "spoken_response':", 'spoken_response:',
+                    '"response":', "'response':", 'response":', "response':", 'response:',
+                    '"message":', "'message':", 'message":', "message':", 'message:',
+                    '"spoken_actions":', "'spoken_actions':", 'spoken_actions":', 'spoken_actions:',
+                    '"actions":', "'actions':", 'actions":', 'actions:'
+                ]:
+                    if token in spoken_clean:
+                        idx = spoken_clean.find(token) + len(token)
+                        spoken_clean = spoken_clean[idx:].strip(' \t\n\r"\'{},[]')
+                        found = True
+                if not found:
+                    break
+
+            spoken = spoken_clean.strip('{}[]"\' \t\n\r') if spoken_clean else "Command executed successfully, sir."
+
         print(f"[PIPELINE COMPLETE in {latency_ms:.1f}ms]: Spoken Response -> \"{spoken}\"")
 
         if hasattr(self, 'gui') and self.gui:

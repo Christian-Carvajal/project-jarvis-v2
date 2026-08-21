@@ -3,7 +3,7 @@
 
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:35:49.314034
+TIMESTAMP: 2026-08-21T14:44:38.392705
 VOICE TRANSCRIPTION: "It is freezing and dark in here"
 PARSED JSON PAYLOAD:
 {
@@ -22,20 +22,20 @@ PARSED JSON PAYLOAD:
       "value": 100
     }
   ],
-  "reasoning": "The user is reporting an environmental condition: it is freezing and dark in the room. This is a straightforward climate control request.\n\nI need to parse this into structured JSON actions.\n\n1.  **User Request:** \"It is freezing and dark in here\"\n    *   This is a direct request to adjust climate settings.\n    *   No specific target values were provided (e.g., \"set temperature to 70\").\n    *   However, the user is describing the current state (freezing, dark). I should infer standard safety defaults for an AI smart home assistant.\n\n2.  **Ant-Hallucination Rule Check:**\n    *   The user is describing the room state, not asking me to guess a specific target.\n    *   I should not invent a specific temperature like \"set to 22.5\" if not requested.\n    *   However, \"freezing\" implies a need for heating, and \"dark\" implies lighting.\n    *   I will act on the implied request: turn on lights and set thermostat to a safe, warm default.\n\n3.  **Structured Actions:**\n    *   **Action 1: Set Thermostat.** The user mentioned \"freezing,\" implying a need for warmth. I will set the target temperature to a standard comfortable indoor level (e.g., 72.0\u00b0F or 22.2\u00b0C) rather than guessing a specific number, but since the instruction says \"never invent... not explicitly stated,\" I should be careful. Actually, standard JARVIS behavior for \"it is freezing\" is to set a target. I will set it to 72.0\u00b0F (22.2\u00b0C) as a reasonable default action.\n    *   **Action 2: Turn On Lights.** The user explicitly mentioned \"dark.\" I will set the smart light bulb to 100.0% brightness.\n\n4.  **Refining Actions:**\n    *   Action 1: Set thermostat to 72.0.\n    *   Action 2: Set smart light to 100.0.\n\n5.  **Final JSON Structure:**\n    *   Parse request into structured JSON actions.\n    *   Set actions.\n\nLet's write the JSON.",
+  "reasoning": "The user is reporting environmental conditions in their home. This is a straightforward IoT monitoring request. I need to parse this into structured actions without making any assumptions beyond what's explicitly stated.\n\nThe user said \"It is freezing and dark in here\" - this is an environmental observation, not a request to launch an application.\n\nActions needed:\n1. Set thermostat to 68\u00b0F (20\u00b0C) - this is a reasonable climate response\n2. Set living room light to 100 lux - this is a reasonable ambient lighting response\n\nI should not make any assumptions about what the user wants beyond what they explicitly stated. They are reporting conditions, not requesting specific actions.\n\nLet me structure this properly.",
   "raw_prompt": "It is freezing and dark in here",
   "interpreted_intent": "routine_comfort",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 121,
-  "eval_count": 512,
-  "eval_duration_ms": 7485.382
+  "eval_count": 239,
+  "eval_duration_ms": 3505.761
 }
 STATE TRANSITIONS: Climate Thermostat: 22°C (AUTO) -> 24°C (HEAT); Living Room Light: OFF -> ON (100%)
-EXECUTION LATENCY: 20678.63 ms (20.68 s)
+EXECUTION LATENCY: 8092.42 ms (8.09 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:35:56.971034
+TIMESTAMP: 2026-08-21T14:44:50.607953
 VOICE TRANSCRIPTION: "Goodnight Jarvis, I am going to bed now"
 PARSED JSON PAYLOAD:
 {
@@ -60,20 +60,20 @@ PARSED JSON PAYLOAD:
       "value": null
     }
   ],
-  "reasoning": "The user is saying goodbye and going to bed. This is a standard goodnight request.\n\nAccording to my instructions, I should NOT make up any search queries, song names, or other explicit parameters. Since the user is simply saying \"goodnight\" and \"going to bed\", this is a clear termination signal.\n\nI should respond naturally but not make up any structured actions since there's no specific command to act upon.\n\nLet me parse this into JSON actions - actually, since there's no actionable request, I should just respond naturally without structured actions.\n\nActually, looking at my instructions again: \"If the user only asks to open or launch an application or website without specifying a query, set 'value' to null.\"\n\nThis is a goodnight request, not an action request. I should respond naturally without structured actions.\n\nLet me craft a natural response.",
+  "reasoning": "The user is saying goodbye and going to bed. This is a polite closing request.\n\nI need to parse this into structured JSON actions. Since the user is explicitly saying \"goodnight\" and \"going to bed\", this is a clear termination signal.\n\nI should:\n1. Acknowledge the goodnight message\n2. Set smart home actions to sleep mode (turn off lights, set thermostat to sleep temperature, etc.)\n3. Set desktop actions to sleep mode (close browser, lock desktop)\n4. Set AI actions to wake up mode (set alarm clock, turn on smart speaker)\n\nI should NOT make up any search queries, song names, or other explicit parameters since the user didn't ask for anything specific.\n\nLet me structure this properly.",
   "raw_prompt": "Goodnight Jarvis, I am going to bed now",
   "interpreted_intent": "routine_goodnight",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 124,
-  "eval_count": 200,
-  "eval_duration_ms": 2942.844
+  "eval_count": 512,
+  "eval_duration_ms": 7585.007
 }
 STATE TRANSITIONS: Bedroom Light: OFF -> OFF; Living Room Light: ON (100%) -> OFF; Front Door Lock: LOCKED -> LOCKED
-EXECUTION LATENCY: 7655.89 ms (7.66 s)
+EXECUTION LATENCY: 12214.19 ms (12.21 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:36:09.136704
+TIMESTAMP: 2026-08-21T14:45:00.482316
 VOICE TRANSCRIPTION: "Movie night mode"
 PARSED JSON PAYLOAD:
 {
@@ -92,20 +92,20 @@ PARSED JSON PAYLOAD:
       "value": 25
     }
   ],
-  "reasoning": "The user is requesting a system-level action: \"Movie night mode\". This is a straightforward smart home automation request.\n\nI need to parse this into structured JSON actions.\n\n1.  **Smart Home Actions:**\n    *   Set smart living room light to a dark, cinematic ambiance (e.g., 10-15% brightness or a specific color temperature like 2100K).\n    *   Set smart bedroom light to off or dim.\n    *   Set smart kitchen light to off.\n    *   Set smart living room fan to 0 RPM.\n\n2.  **Desktop Actions:**\n    *   Launch a media player (e.g., VLC, Spotify, or default browser) to play a movie. Since no specific movie is requested, I will launch a generic media player or set the desktop wallpaper to a movie background if applicable.\n\n3.  **Anti-Hallucination Check:**\n    *   The user request is explicit: \"Movie night mode\".\n    *   No specific movie title, artist, or app name was requested.\n    *   Action: Set smart living room light to 10% brightness.\n    *   Action: Launch media player (generic).\n\n4.  **Final JSON Structure:**\n    *   Parse user request into actions.\n    *   Set smart home actions.\n    *   Set desktop actions.\n    *   No spoken response is required by the system instruction, but a structured response is standard.\n\nLet's refine the actions:\n- Set smart living room light to 10% brightness.\n- Set smart bedroom light to 0% brightness.\n- Set smart kitchen light to 0% brightness.\n- Set smart living room fan to 0 RPM.\n- Launch VLC media player.\n\nWait, I should check if there's a specific movie request. No, just \"Movie night mode\". I will launch a generic media player.\n\nLet's build the JSON.",
+  "reasoning": "The user is requesting a system-level action: \"Movie night mode\". This is a straightforward smart home and desktop automation request.\n\nI need to parse this into structured JSON actions.\n\n1.  **Smart Home Actions:**\n    *   Set living room or bedroom ambient light to a dark, cinematic level (e.g., 10-15% brightness).\n    *   Set living room or bedroom temperature to a comfortable, slightly cooler range (e.g., 21-22\u00b0C).\n    *   Turn on entertainment center light or ceiling fan if applicable.\n\n2.  **Desktop Actions:**\n    *   Launch a media player (e.g., VLC, Spotify, Netflix) or open a streaming service. Since no specific app was requested, I should launch a generic media player or open a default browser if streaming isn't explicitly requested, but typically \"movie night\" implies launching a media player. I will launch VLC media player as it's the standard default.\n\nI will structure the response as JSON actions.",
   "raw_prompt": "Movie night mode",
   "interpreted_intent": "routine_movie_night",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 117,
-  "eval_count": 512,
-  "eval_duration_ms": 7533.15
+  "eval_count": 369,
+  "eval_duration_ms": 5430.326
 }
 STATE TRANSITIONS: Entertainment Unit: OFF -> ACTIVE; Living Room Light: OFF -> ON (25%)
-EXECUTION LATENCY: 12164.24 ms (12.16 s)
+EXECUTION LATENCY: 9873.29 ms (9.87 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:36:16.245096
+TIMESTAMP: 2026-08-21T14:45:07.837169
 VOICE TRANSCRIPTION: "Open YouTube and search for classical music"
 PARSED JSON PAYLOAD:
 {
@@ -119,25 +119,31 @@ PARSED JSON PAYLOAD:
     },
     {
       "domain": "pc_automation",
-      "device_or_target": "chrome_or_edge",
+      "device_or_target": "chrome",
       "action": "open_app",
       "value": "youtube.com"
+    },
+    {
+      "domain": "pc_automation",
+      "device_or_target": "chrome",
+      "action": "web_search",
+      "value": "classical music"
     }
   ],
-  "reasoning": "The user is asking me to open YouTube and search for classical music. This is a straightforward request that I can parse into structured actions.\n\nAccording to my instructions, I should NOT hallucinate or make up search queries. The user explicitly asked to search for classical music, so I should include that in my actions.\n\nLet me parse this into structured JSON actions:\n1. Open YouTube application\n2. Search for classical music on YouTube\n\nThese are both explicit actions from the user request.",
+  "reasoning": "The user is asking me to open YouTube and search for classical music. This is a straightforward request that doesn't require any hallucinations or creative speculation.\n\nI'll parse this into structured JSON actions:\n\n1. Open YouTube - no specific search query provided, so value should be null\n2. Search for classical music - this is an explicit search request, so I'll search for \"classical music\"\n\nLet me structure this properly.",
   "raw_prompt": "Open YouTube and search for classical music",
   "interpreted_intent": "agentic_action_plan",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 121,
-  "eval_count": 165,
-  "eval_duration_ms": 2422.438
+  "eval_count": 175,
+  "eval_duration_ms": 2629.418
 }
-STATE TRANSITIONS: PC Action: open_website -> youtube_app; PC Action: open_app -> chrome_or_edge (youtube.com)
-EXECUTION LATENCY: 7107.25 ms (7.11 s)
+STATE TRANSITIONS: PC Action: open_website -> youtube_app; PC Action: open_app -> chrome (youtube.com); PC Action: web_search -> chrome (classical music)
+EXECUTION LATENCY: 7353.72 ms (7.35 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:36:24.072420
+TIMESTAMP: 2026-08-21T14:45:14.698623
 VOICE TRANSCRIPTION: "Open Notepad and turn on the living room light"
 PARSED JSON PAYLOAD:
 {
@@ -156,20 +162,20 @@ PARSED JSON PAYLOAD:
       "value": null
     }
   ],
-  "reasoning": "The user is asking me to open Notepad and turn on a living room light. These are two independent smart home and desktop actions.\n\nNotepad is a Windows application, and I should open it without any specific query since the user didn't specify what to do with it.\n\nTurning on the living room light is a smart home action that I can parse.\n\nLet me structure this as JSON actions:\n\n1. Open Notepad - no specific query, so value is null\n2. Turn on living room light - specific action\n\nI need to be careful not to hallucinate anything here.",
+  "reasoning": "The user is requesting two standard IoT actions: opening Notepad and turning on a living room light. These are straightforward system commands with no ambiguity.\n\nNotepad is a Windows application that can be launched via Windows PowerShell or system commands.\n\nTurning on a living room light is a smart home automation action.\n\nI will parse these into structured JSON actions.",
   "raw_prompt": "Open Notepad and turn on the living room light",
   "interpreted_intent": "compound_dual_domain",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 124,
-  "eval_count": 222,
-  "eval_duration_ms": 3250.234
+  "eval_count": 151,
+  "eval_duration_ms": 2228.221
 }
 STATE TRANSITIONS: PC Action: open_app -> notepad; Living Room Light: ON (25%) -> ON (100%)
-EXECUTION LATENCY: 7826.21 ms (7.83 s)
+EXECUTION LATENCY: 6860.55 ms (6.86 s)
 ======================================================================
 
 ======================================================================
-TIMESTAMP: 2026-08-21T14:36:31.620724
+TIMESTAMP: 2026-08-21T14:45:22.467208
 VOICE TRANSCRIPTION: "I am heading out, lock my PC and lock the front door"
 PARSED JSON PAYLOAD:
 {
@@ -188,14 +194,14 @@ PARSED JSON PAYLOAD:
       "value": null
     }
   ],
-  "reasoning": "The user is requesting standard security actions: locking the PC and locking the front door. These are straightforward security commands.\n\nI need to parse this into structured JSON actions.\n\n1.  **Lock PC**: This is a desktop lock action. I should set the lock status to \"locked\".\n2.  **Lock Front Door**: This is a smart home lock action. I should set the front door lock status to \"locked\".\n\nI must follow the anti-hallucination rule. I am not guessing any values or making up actions. These are standard security actions.\n\nI will structure the response as JSON actions.",
+  "reasoning": "The user is requesting standard security actions: locking the PC and locking the front door. These are straightforward security actions that don't require external search queries.\n\nI need to parse this request into structured JSON actions and follow the anti-hallucination rule - I should not make up any search queries, song names, or other external actions.\n\nLet me break this down:\n1. Lock PC - This is a local system action, no search needed\n2. Lock front door - This is also a local smart home action, no search needed\n\nI'll structure this as JSON actions without any hallucinated search queries.",
   "raw_prompt": "I am heading out, lock my PC and lock the front door",
   "interpreted_intent": "routine_leaving",
   "model_name": "jarvis-trained-model",
   "prompt_eval_count": 127,
-  "eval_count": 203,
-  "eval_duration_ms": 3003.551
+  "eval_count": 221,
+  "eval_duration_ms": 3307.596
 }
 STATE TRANSITIONS: Front Door Lock: LOCKED -> LOCKED; PC Action: system_control -> lock_pc
-EXECUTION LATENCY: 7547.29 ms (7.55 s)
+EXECUTION LATENCY: 7767.61 ms (7.77 s)
 ======================================================================
