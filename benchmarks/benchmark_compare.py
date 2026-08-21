@@ -22,9 +22,12 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "benchmarks" else CURRENT_DIR
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
 
 from src.ai_engine import AIEngine, AssistantIntentResponse, DeviceAction
 from benchmark_baseline import BENCHMARK_TEST_SUITE, run_benchmark

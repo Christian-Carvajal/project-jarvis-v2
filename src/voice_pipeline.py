@@ -511,15 +511,23 @@ class VoicePipeline:
 
         return True, sanitized
 
-    def record_audio_with_vad(self, duration: float = 5.0, target_sr: int = 16000) -> Optional[sr.AudioData]:
+    def record_audio_with_vad(
+        self,
+        duration: float = 10.0,
+        target_sr: int = 16000,
+        min_speech_frames: int = 4,       # ~128ms sustained voice energy to lock into speech
+        silence_timeout_frames: int = 35  # ~1.12s trailing silence cutoff after speech begins
+    ) -> Optional[sr.AudioData]:
         """
         Studio-grade microphone capture featuring:
         1. Streaming from verified hardware device at its native sample rate and channels.
         2. Fast software mono downmixing and linear interpolation resampling to 16,000 Hz.
-        3. Pre-roll Ring Buffer (6 frames / ~192ms) ensuring first syllables are never cut off.
+        3. Pre-roll Ring Buffer (8 frames / ~256ms) ensuring first syllables are never cut off.
         4. DC Offset Removal & High-Pass Filtering (removes sub-80Hz low rumble/hum).
-        5. Silero VAD / Dynamic Energy Trailing Silence Slicing (~220ms response cutoff).
-        6. Dynamic Software AGC (Automatic Gain Control) normalizing speech to ~28,500 16-bit PCM.
+        5. Transient click rejection: Discards 1-2 frame pops (mouse clicks, mic switches) so they don't trigger premature silence cutoffs.
+        6. Trailing Silence Slicing (~1.12s after sustained speech) allowing natural word pauses.
+        7. Full timeout window (default 10.0s) waiting for user speech before timing out.
+        8. Dynamic Software AGC (Automatic Gain Control) normalizing speech to ~28,500 16-bit PCM.
         """
         if self.is_mic_muted:
             return None
@@ -532,14 +540,12 @@ class VoicePipeline:
         target_block_size = 512  # ~32ms at 16kHz
         native_block_size = int(target_block_size * (native_sr / target_sr))
         max_frames = int((duration * target_sr) / target_block_size)
-        max_silence_frames = 7   # ~224ms trailing silence cutoff — instant auto-slice
-        pre_roll_limit = 6       # ~192ms pre-speech ring buffer
+        pre_roll_limit = 8       # ~256ms pre-speech ring buffer
 
         if HAS_SOUNDDEVICE and dev_idx is not None:
             try:
                 captured_blocks = []
                 lock = threading.Lock()
-                stream_error = []
 
                 def _stream_callback(indata, frames, time_info, status):
                     if status:
@@ -558,6 +564,7 @@ class VoicePipeline:
                     pre_roll_buffer = []
                     processed_frames = []
                     speech_detected = False
+                    voice_frame_count = 0
                     silent_frames = 0
                     hp_prev_in = 0.0
                     hp_prev_out = 0.0
@@ -598,11 +605,9 @@ class VoicePipeline:
                             hp_prev_in = flat[i]
                             filtered[i] = hp_prev_out
 
-                        # Maintain Pre-Roll Ring Buffer
-                        if not speech_detected:
-                            pre_roll_buffer.append(filtered)
-                            if len(pre_roll_buffer) > pre_roll_limit:
-                                pre_roll_buffer.pop(0)
+                        # Energy metrics
+                        frame_max = float(np.max(np.abs(filtered)))
+                        frame_rms = float(np.sqrt(np.mean(filtered**2)))
 
                         # 3. Speech Activity Check
                         is_voice_frame = False
@@ -612,34 +617,49 @@ class VoicePipeline:
                                 if prob > 0.35:
                                     is_voice_frame = True
                             except Exception:
-                                if np.max(np.abs(filtered)) > 0.012:
+                                if frame_max > 0.015 or frame_rms > 0.005:
                                     is_voice_frame = True
                         else:
-                            if np.max(np.abs(filtered)) > 0.012:
+                            if frame_max > 0.015 or frame_rms > 0.005:
                                 is_voice_frame = True
 
                         if is_voice_frame:
+                            voice_frame_count += 1
                             if not speech_detected:
-                                speech_detected = True
-                                # Prepend captured pre-roll buffer so onset consonants are preserved
-                                processed_frames.extend(pre_roll_buffer)
-                            processed_frames.append(filtered)
-                            silent_frames = 0
-                        elif speech_detected:
-                            processed_frames.append(filtered)
-                            silent_frames += 1
-                            if silent_frames >= max_silence_frames:
-                                # User finished speaking -> Slice immediately!
-                                break
+                                if voice_frame_count >= min_speech_frames:
+                                    # Sustained speech confirmed -> lock into recording
+                                    speech_detected = True
+                                    processed_frames.extend(pre_roll_buffer)
+                                    processed_frames.append(filtered)
+                                    silent_frames = 0
+                                else:
+                                    pre_roll_buffer.append(filtered)
+                                    if len(pre_roll_buffer) > pre_roll_limit:
+                                        pre_roll_buffer.pop(0)
+                            else:
+                                processed_frames.append(filtered)
+                                silent_frames = 0
+                        else:
+                            if not speech_detected:
+                                voice_frame_count = max(0, voice_frame_count - 1)
+                                pre_roll_buffer.append(filtered)
+                                if len(pre_roll_buffer) > pre_roll_limit:
+                                    pre_roll_buffer.pop(0)
+                            else:
+                                processed_frames.append(filtered)
+                                silent_frames += 1
+                                if silent_frames >= silence_timeout_frames:
+                                    # User finished speaking -> Slice immediately!
+                                    break
 
-                if not processed_frames:
+                if not processed_frames or len(processed_frames) < (min_speech_frames + 2):
                     return None
 
                 raw_audio = np.concatenate(processed_frames)
                 max_val = float(np.max(np.abs(raw_audio)))
 
                 # Noise gate threshold
-                if max_val < 0.002:
+                if max_val < 0.003:
                     return None
 
                 # 4. Dynamic Software AGC (Automatic Gain Control)
@@ -655,7 +675,7 @@ class VoicePipeline:
         # Fallback to SpeechRecognition Microphone
         try:
             with sr.Microphone(sample_rate=target_sr) as source:
-                return self.recognizer.listen(source, timeout=2.0, phrase_time_limit=duration)
+                return self.recognizer.listen(source, timeout=duration, phrase_time_limit=duration)
         except Exception:
             pass
 
@@ -694,10 +714,11 @@ class VoicePipeline:
         """Listens for wake word in STANDBY mode. Alias for listen_and_filter."""
         return self.listen_and_filter()
 
-    def listen_raw_command(self, timeout: float = 6.0) -> str:
+    def listen_raw_command(self, timeout: float = 10.0) -> str:
         """
         Listens directly for the user's follow-up or manual voice trigger command.
         (Does NOT require repeating 'Hey Jarvis').
+        Waits up to timeout (default 10.0s) for user speech.
         Returns:
             transcribed_command: str
         """
@@ -719,7 +740,7 @@ class VoicePipeline:
 
         return clean_text
 
-    def listen_for_direct_command(self, duration: float = 6.0) -> str:
+    def listen_for_direct_command(self, duration: float = 10.0) -> str:
         """Alias for listen_raw_command."""
         return self.listen_raw_command(timeout=duration)
 

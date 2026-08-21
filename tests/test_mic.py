@@ -6,7 +6,8 @@ import sounddevice as sd
 import speech_recognition as sr
 
 # Ensure src/ is discoverable
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "tests" else CURRENT_DIR
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 

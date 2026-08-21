@@ -166,20 +166,20 @@ class JarvisVirtualAssistant:
             # =================================================================
             elif self.state == AssistantState.ACTIVE_COMMAND:
                 if hasattr(self, 'gui') and self.gui:
-                    self.gui.after(0, lambda: self.gui.update_status("Listening for Command...", "#FFD700"))
-                    self.gui.after(0, lambda: self.gui.log_console("[ACTIVE] Listening for your command (no wake word needed)..."))
+                    self.gui.after(0, lambda: self.gui.update_status("Listening for Command (10s)...", "#FFD700"))
+                    self.gui.after(0, lambda: self.gui.log_console("[ACTIVE] Listening for your command (waiting up to 10 seconds)..."))
 
-                command_text = self.voice.listen_raw_command(timeout=6.0)
+                command_text = self.voice.listen_raw_command(timeout=10.0)
 
                 if command_text and len(command_text.strip()) >= 3:
                     self.is_processing = True
                     self._execute_command_pipeline(command_text.strip())
                 else:
-                    # 6-Second Timeout Fallback
+                    # 10-Second Timeout Fallback
                     timeout_msg = "Returning to standby, sir."
                     print(f"[ACTIVE TIMEOUT]: {timeout_msg}")
                     if hasattr(self, 'gui') and self.gui:
-                        self.gui.after(0, lambda: self.gui.log_console(f"[TIMEOUT] No command heard. {timeout_msg}"))
+                        self.gui.after(0, lambda: self.gui.log_console(f"[TIMEOUT] No command heard within 10 seconds. {timeout_msg}"))
                     self.voice.speak(timeout_msg)
 
                 # Always reset back to standby after command execution or timeout
@@ -288,9 +288,10 @@ class JarvisVirtualAssistant:
         def _voice_worker():
             self.is_processing = True
             if hasattr(self, 'gui') and self.gui:
-                self.gui.after(0, lambda: self.gui.update_status("Listening for Command...", "#00FF88"))
+                self.gui.after(0, lambda: self.gui.update_status("Listening for Command (10s)...", "#00FF88"))
+                self.gui.after(0, lambda: self.gui.log_console("🎙️ [LISTENING]: Microphone active — speak your command (waiting up to 10s)..."))
 
-            command_text = self.voice.listen_raw_command(timeout=5.5)
+            command_text = self.voice.listen_raw_command(timeout=10.0)
 
             if command_text and len(command_text.strip()) >= 3:
                 if hasattr(self, 'gui') and self.gui:

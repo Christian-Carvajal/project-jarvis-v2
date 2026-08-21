@@ -89,7 +89,7 @@ class DeviceAction(BaseModel):
         pc_actions = ["open_app", "close_app", "open_website", "system_control", "web_search", "media_control", "launch", "open", "close", "kill", "search", "play_music"]
 
         # Infer target from action or value if target is missing
-        if not target:
+        if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
             if val and isinstance(val, str):
                 v_low = val.lower().strip()
                 if any(pt in v_low for pt in pc_targets):
@@ -98,11 +98,30 @@ class DeviceAction(BaseModel):
                 elif any(st in v_low for st in ["kitchen", "bedroom", "living", "thermostat", "door", "lock", "fan", "blind"]):
                     target = v_low
                     val = None
-            else:
+            if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
                 for pt in pc_targets:
                     if pt in act:
                         target = pt
                         break
+                if not target or target in ["device", "target", "entity", "room", "light", "app", "system"]:
+                    if any(k in act for k in ["unlock", "lock", "door", "front_door", "deadbolt"]):
+                        target = "front_door_lock"
+                    elif any(k in act for k in ["temp", "temperature", "thermostat", "climate", "ac", "cool", "heat", "warm", "hot", "cold", "freeze"]):
+                        target = "thermostat"
+                    elif any(k in act for k in ["fan", "ceiling"]):
+                        target = "ceiling_fan"
+                    elif any(k in act for k in ["blind", "blinds", "window", "curtain"]):
+                        target = "window_blinds"
+                    elif any(k in act for k in ["entertainment", "tv", "television", "theater", "display"]):
+                        target = "entertainment_unit"
+                    elif "kitchen" in act:
+                        target = "kitchen_light"
+                    elif "bedroom" in act:
+                        target = "bedroom_light"
+                    elif "living" in act:
+                        target = "living_room_light"
+                    elif any(k in act for k in ["all_lights", "all lights"]):
+                        target = "all_lights"
 
         # Normalize target string
         target_norm = target.replace(" ", "_").replace("-", "_")
@@ -114,9 +133,14 @@ class DeviceAction(BaseModel):
             target = "calculator"
 
         # Automatically route climate and temperature entities to smart_home thermostat
-        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or any(k in act for k in ["set_temperature", "set temperature", "warm", "cool"]):
+        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or any(k in act for k in ["set_temperature", "set temperature", "warm", "cool", "cooldown"]):
             domain = "smart_home"
             target = "thermostat"
+
+        # Automatically route entertainment entities to smart_home entertainment_unit
+        if any(k in target_norm for k in ["entertainment", "tv", "television", "theater", "display"]):
+            domain = "smart_home"
+            target = "entertainment_unit"
 
         if not domain:
             if any(pt in target_norm for pt in pc_targets) or act in pc_actions or any(pt in act for pt in pc_targets):
@@ -131,6 +155,8 @@ class DeviceAction(BaseModel):
                 target = "bedroom_light"
             elif "living" in target_norm:
                 target = "living_room_light"
+            elif any(k in target_norm for k in ["all_lights", "all_light", "all_lights_off", "all_lights_on"]):
+                target = "all_lights"
             elif any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]):
                 target = "thermostat"
             elif any(k in target_norm for k in ["door", "lock", "front_door", "deadbolt"]):
@@ -141,7 +167,7 @@ class DeviceAction(BaseModel):
                 target = "ceiling_fan"
             elif any(k in target_norm for k in ["blind", "blinds", "window", "curtain"]):
                 target = "window_blinds"
-            elif any(k in target_norm for k in ["entertainment", "tv"]):
+            elif any(k in target_norm for k in ["entertainment", "tv", "television", "theater", "display"]):
                 target = "entertainment_unit"
             elif target_norm:
                 target = target_norm
@@ -151,12 +177,20 @@ class DeviceAction(BaseModel):
                 act = "turn_off"
             elif any(k in act for k in ["turnon", "turn_on", "turn on", "activate", "enable", "illuminate", "on"]):
                 act = "turn_on"
-            elif any(k in act for k in ["set_temperature", "set temperature", "temperature", "temp"]):
+            elif any(k in act for k in ["set_temperature", "set temperature", "temperature", "temp", "cooldown", "cool", "heat", "warm"]):
                 act = "set_temperature"
-            elif "unlock" in act:
+                if any(k in act for k in ["cool", "cooldown"]) and val is None:
+                    val = 20.0
+                elif any(k in act for k in ["warm", "heat"]) and val is None:
+                    val = 24.0
+            elif any(k in act for k in ["unlock", "open_door", "unsecure"]):
                 act = "unlock"
-            elif "lock" in act:
+            elif any(k in act for k in ["lock", "close_door", "secure"]):
                 act = "lock"
+            elif any(k in act for k in ["close", "lower", "shut"]):
+                act = "turn_off" if target == "entertainment_unit" else "close"
+            elif any(k in act for k in ["open", "raise", "up"]):
+                act = "turn_on" if target == "entertainment_unit" else "open"
         else:
             # PC Automation domain action normalization
             if any(k in act for k in ["open", "launch", "start", "run"]):
@@ -205,7 +239,7 @@ class AssistantIntentResponse(BaseModel):
 
         raw_p = str(values.get("raw_prompt") or "").lower().strip()
 
-        # Check for multi-action routines in raw_prompt
+        # Check for multi-action routines and explicit intents in raw_prompt
         if raw_p:
             if any(w in raw_p for w in ["goodnight", "going to bed", "sleep mode", "bed time"]):
                 values["actions"] = [
@@ -226,13 +260,102 @@ class AssistantIntentResponse(BaseModel):
                 values["interpreted_intent"] = "routine_movie_night"
                 return values
 
-            elif any(w in raw_p for w in ["freezing", "cold and dark", "it is freezing", "chilly"]):
+            elif any(w in raw_p for w in ["entertainment hub", "entertainment unit", "entertainment system", "entertainment center", "tv", "television", "the tv", "smart tv", "entertainment"]):
+                if any(w in raw_p for w in ["off", "turn off", "power down", "shut off", "shut down", "kill", "close", "disable"]):
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_off"}
+                    ]
+                    values["spoken_response"] = "Powering down the entertainment system, sir."
+                    values["interpreted_intent"] = "smart_home_entertainment"
+                    return values
+                else:
+                    values["actions"] = [
+                        {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_on", "value": "Cinema Mode"}
+                    ]
+                    values["spoken_response"] = "Powering on the entertainment system, sir."
+                    values["interpreted_intent"] = "smart_home_entertainment"
+                    return values
+
+            elif any(w in raw_p for w in ["hot here", "hot in here", "too hot", "its hot", "it is hot", "really hot", "sweating", "cool down", "cool the room", "cool down the room", "lower the temperature", "lower the temp", "drop the temp"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "thermostat", "action": "set_temperature", "value": 20.0},
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_on", "value": "HIGH"}
+                ]
+                values["spoken_response"] = "Lowering the thermostat to 20.0°C and setting the ceiling fan to HIGH, sir."
+                values["interpreted_intent"] = "routine_cooling"
+                return values
+
+            elif any(w in raw_p for w in ["freezing", "cold and dark", "it is freezing", "cold in here", "too cold", "its cold", "it is cold", "really cold", "chilly", "warm up", "warm up the room", "raise the temp", "raise the temperature"]):
                 values["actions"] = [
                     {"domain": "smart_home", "device_or_target": "thermostat", "action": "set_temperature", "value": 24.0},
                     {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on", "value": 100}
                 ]
                 values["spoken_response"] = "Adjusting the thermostat to 24.0°C and turning on the living room lights for warmth."
                 values["interpreted_intent"] = "routine_comfort"
+                return values
+
+            elif any(w in raw_p for w in ["unlock the front door", "unlock front door", "unlock the door", "unlock door", "open the front door", "open front door"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "unlock"}
+                ]
+                values["spoken_response"] = "Front door unlocked, sir."
+                values["interpreted_intent"] = "smart_home_security"
+                return values
+
+            elif any(w in raw_p for w in ["lock the front door", "lock front door", "lock the door", "lock door", "secure the front door", "secure front door"]) and not any(w in raw_p for w in ["pc", "workstation", "heading out", "leaving"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Front door locked and secured, sir."
+                values["interpreted_intent"] = "smart_home_security"
+                return values
+
+            elif any(w in raw_p for w in ["open the blinds", "open blinds", "raise the blinds", "raise blinds", "open window blinds"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "window_blinds", "action": "open", "value": 100}
+                ]
+                values["spoken_response"] = "Window blinds opened, sir."
+                values["interpreted_intent"] = "smart_home_blinds"
+                return values
+
+            elif any(w in raw_p for w in ["close the blinds", "close blinds", "lower the blinds", "lower blinds", "shut the blinds", "shut blinds", "close window blinds"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "window_blinds", "action": "close", "value": 0}
+                ]
+                values["spoken_response"] = "Window blinds closed, sir."
+                values["interpreted_intent"] = "smart_home_blinds"
+                return values
+
+            elif any(w in raw_p for w in ["turn on the ceiling fan", "turn on ceiling fan", "turn on the fan", "turn on fan", "start the fan", "start fan"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_on", "value": "HIGH"}
+                ]
+                values["spoken_response"] = "Ceiling fan turned on at high speed, sir."
+                values["interpreted_intent"] = "smart_home_fan"
+                return values
+
+            elif any(w in raw_p for w in ["turn off the ceiling fan", "turn off ceiling fan", "turn off the fan", "turn off fan", "stop the fan", "stop fan"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "ceiling_fan", "action": "turn_off"}
+                ]
+                values["spoken_response"] = "Ceiling fan turned off, sir."
+                values["interpreted_intent"] = "smart_home_fan"
+                return values
+
+            elif any(w in raw_p for w in ["turn off all lights", "turn off all the lights", "all lights off", "darken the house"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "all_lights", "action": "turn_off"}
+                ]
+                values["spoken_response"] = "All lights powered down, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
+                return values
+
+            elif any(w in raw_p for w in ["turn on all lights", "turn on all the lights", "all lights on", "illuminate the house"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "all_lights", "action": "turn_on", "value": 100}
+                ]
+                values["spoken_response"] = "All lights illuminated, sir."
+                values["interpreted_intent"] = "smart_home_lighting"
                 return values
 
             elif any(w in raw_p for w in ["heading out", "leaving the house", "leaving home"]):
@@ -309,6 +432,8 @@ class AssistantIntentResponse(BaseModel):
                     spoken = "Turning off the kitchen light, sir." if "off" in f_act else "Illuminating the kitchen light, sir."
                 elif "living" in f_target:
                     spoken = "Turning off the living room light, sir." if "off" in f_act else "Illuminating the living room light, sir."
+                elif "all_lights" in f_target or "lights" in f_target:
+                    spoken = "All lights powered down, sir." if "off" in f_act else "All lights illuminated, sir."
                 elif "thermostat" in f_target or "temp" in f_target:
                     spoken = f"Setting the thermostat to {f_val}°C, sir." if f_val else "Adjusting the thermostat, sir."
                 elif "door" in f_target or "lock" in f_target:
@@ -327,6 +452,8 @@ class AssistantIntentResponse(BaseModel):
                     spoken = "Opening Calculator, sir."
                 elif "code" in f_target or "vscode" in f_target:
                     spoken = "Opening Visual Studio Code, sir."
+                elif "entertainment" in f_target or "tv" in f_target:
+                    spoken = "Powering down the entertainment system, sir." if "off" in f_act else "Powering on the entertainment system, sir."
                 elif "lock_pc" in f_target or ("lock" in f_act and "pc" in f_target):
                     spoken = "Workstation locked, sir."
                 else:

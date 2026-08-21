@@ -9,12 +9,16 @@ import sys
 import zipfile
 import shutil
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "scripts" else CURRENT_DIR
 
 
 def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsalijo"):
     zip_name = f"AI_PrelimExam_Group_{last_name1}_{last_name2}.zip"
+    reports_dir = os.path.join(PROJECT_ROOT, "reports")
+    os.makedirs(reports_dir, exist_ok=True)
     zip_path = os.path.join(PROJECT_ROOT, zip_name)
+    zip_reports_path = os.path.join(reports_dir, zip_name)
 
     print(f"[PACKAGING]: Building submission archive '{zip_name}'...")
 
@@ -29,13 +33,12 @@ def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsa
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for item, is_dir in required_items:
             item_path = os.path.join(PROJECT_ROOT, item)
-            if not os.path.exists(item_path):
-                print(f"  [!] Warning: Missing item '{item}'. Make sure it is generated first!")
-                continue
 
             if is_dir:
+                if not os.path.exists(item_path):
+                    print(f"  [!] Warning: Missing directory '{item}'.")
+                    continue
                 for root, dirs, files in os.walk(item_path):
-                    # Skip __pycache__
                     if "__pycache__" in root:
                         continue
                     for file in files:
@@ -43,22 +46,28 @@ def create_submission_zip(last_name1: str = "Carvajal", last_name2: str = "Sarsa
                         rel_path = os.path.relpath(file_path, PROJECT_ROOT)
                         zf.write(file_path, rel_path)
                         print(f"  + Added: {rel_path}")
-            if item == "Prelim_Project_Report.pdf":
+            elif item == "Prelim_Project_Report.pdf":
                 pdf_candidates = [
-                    "Prelim_Project_Report_Final.pdf",
-                    "Prelim_Project_Report_v2.pdf",
-                    "Prelim_Project_Report.pdf",
-                    "test_report.pdf"
+                    os.path.join(PROJECT_ROOT, "Prelim_Project_Report_Final.pdf"),
+                    os.path.join(PROJECT_ROOT, "test_report.pdf"),
+                    os.path.join(reports_dir, "Prelim_Project_Report_Final.pdf"),
+                    os.path.join(PROJECT_ROOT, "Prelim_Project_Report.pdf"),
+                    os.path.join(reports_dir, "Prelim_Project_Report.pdf")
                 ]
-                chosen = next((c for c in pdf_candidates if os.path.exists(os.path.join(PROJECT_ROOT, c))), None)
+                chosen = next((c for c in pdf_candidates if os.path.exists(c)), None)
                 if chosen:
-                    item_path = os.path.join(PROJECT_ROOT, chosen)
-                    zf.write(item_path, "Prelim_Project_Report.pdf")
-                    print(f"  + Added: Prelim_Project_Report.pdf (from {chosen})")
+                    zf.write(chosen, "Prelim_Project_Report.pdf")
+                    print(f"  + Added: Prelim_Project_Report.pdf (packaged from {os.path.basename(chosen)})")
+                else:
+                    print(f"  [!] Warning: Missing 'Prelim_Project_Report.pdf'.")
             else:
-                zf.write(item_path, item)
-                print(f"  + Added: {item}")
+                if os.path.exists(item_path):
+                    zf.write(item_path, item)
+                    print(f"  + Added: {item}")
+                else:
+                    print(f"  [!] Warning: Missing item '{item}'.")
 
+    shutil.copy(zip_path, zip_reports_path)
     print(f"\n[SUCCESS]: Submission archive created at: {zip_path}")
     print(f"File size: {os.path.getsize(zip_path) / 1024:.2f} KB\n")
 

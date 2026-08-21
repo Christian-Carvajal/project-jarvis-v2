@@ -15,6 +15,7 @@ import sys
 import time
 import json
 import math
+import re
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -490,22 +491,32 @@ class SmartHomeStateMachine:
 
             elif isinstance(dev, SmartThermostat):
                 old = f"{int(round(dev.target_temp))}°C ({dev.mode})"
-                if val is not None:
-                    try:
-                        dev.set_temperature(float(val))
-                    except Exception:
-                        dev.set_temperature(24.0)
-                elif any(k in act for k in ["warm", "heat", "increase", "raise", "up", "turn_on", "on"]):
+                v_str = str(val).lower() if val is not None else ""
+
+                if any(k in v_str for k in ["increase", "raise", "warm", "heat", "up", "warmer"]) or any(k in act for k in ["warm", "heat", "increase", "raise", "up"]):
                     dev.set_temperature(dev.target_temp + 2.0)
-                elif any(k in act for k in ["cool", "decrease", "lower", "drop", "down", "turn_off", "off"]):
+                elif any(k in v_str for k in ["decrease", "lower", "cool", "drop", "down", "cooler", "cold"]) or any(k in act for k in ["cool", "decrease", "lower", "drop", "down", "cooldown"]):
                     dev.set_temperature(dev.target_temp - 2.0)
+                elif val is not None:
+                    m = re.search(r'[-+]?\d*\.?\d+', str(val))
+                    if m:
+                        dev.set_temperature(float(m.group(0)))
+                    else:
+                        dev.set_temperature(20.0)
+                else:
+                    if any(k in act for k in ["cool", "cooler", "cooldown"]):
+                        dev.set_temperature(20.0)
+                    elif any(k in act for k in ["warm", "heat", "warmer"]):
+                        dev.set_temperature(24.0)
+                    else:
+                        dev.set_temperature(22.0)
                 transitions.append(f"{dev.name}: {old} -> {int(round(dev.target_temp))}°C ({dev.mode})")
 
             elif isinstance(dev, SmartLock):
                 old = "LOCKED" if dev.is_locked else "UNLOCKED"
-                if any(k in act for k in ["unlock", "open", "unsecure", "disengage"]):
+                if any(k in act for k in ["unlock", "open", "unsecure", "disengage"]) or (val is not None and str(val).lower() in ["unlock", "open", "unsecured"]):
                     dev.unlock()
-                elif any(k in act for k in ["lock", "secure", "close", "engage"]):
+                elif any(k in act for k in ["lock", "secure", "close", "engage"]) or (val is not None and str(val).lower() in ["lock", "close", "secured"]):
                     dev.lock()
                 else:
                     dev.lock()
@@ -934,13 +945,36 @@ class ModernHomeDashboard(tk.Tk):
             "<Configure>",
             lambda e: devices_canvas.configure(scrollregion=devices_canvas.bbox("all"))
         )
-        devices_canvas.create_window((0, 0), window=scrollable_device_frame, anchor="nw", width=345)
+        canvas_window = devices_canvas.create_window((0, 0), window=scrollable_device_frame, anchor="nw", width=345)
         devices_canvas.configure(yscrollcommand=devices_scrollbar.set)
+
+        def _on_canvas_resize(event):
+            if event.width > 20:
+                devices_canvas.itemconfig(canvas_window, width=event.width - 4)
+
+        devices_canvas.bind("<Configure>", _on_canvas_resize)
 
         devices_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         devices_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self._populate_device_cards(scrollable_device_frame)
+        self._bind_mousewheel_to_all(devices_container, devices_canvas)
+        self._bind_mousewheel_to_all(scrollable_device_frame, devices_canvas)
+        self._bind_mousewheel_to_all(parent, devices_canvas)
+
+    def _bind_mousewheel_to_all(self, widget, canvas):
+        """Recursively binds mouse wheel event to widget and all descendants for smooth scrolling."""
+        def _on_mousewheel(event):
+            try:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            except Exception:
+                pass
+        try:
+            widget.bind("<MouseWheel>", _on_mousewheel, add="+")
+            for child in widget.winfo_children():
+                self._bind_mousewheel_to_all(child, canvas)
+        except Exception:
+            pass
 
     def _populate_device_cards(self, parent):
         cards_info = [
