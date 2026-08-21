@@ -585,3 +585,31 @@ PARSED JSON PAYLOAD:
 STATE TRANSITIONS: Kitchen Light: OFF -> ON (100%)
 EXECUTION LATENCY: 4078.10 ms (4.08 s)
 ======================================================================
+Imported existing <module 'comtypes.gen' from 'C:\\Users\\JOHN MIKO SARSALIJO\\Downloads\\project-jarvis-v2\\.venv\\Lib\\site-packages\\comtypes\\gen\\__init__.py'>
+Using writeable comtypes cache directory: 'C:\Users\JOHN MIKO SARSALIJO\Downloads\project-jarvis-v2\.venv\Lib\site-packages\comtypes\gen'
+
+======================================================================
+TIMESTAMP: 2026-08-21T14:57:11.669100
+VOICE TRANSCRIPTION: "search on youtube something"
+PARSED JSON PAYLOAD:
+{
+  "spoken_response": "Command executed successfully, sir.",
+  "actions": [
+    {
+      "domain": "smart_home",
+      "device_or_target": "living_room_light",
+      "action": "turn_on",
+      "value": "something"
+    }
+  ],
+  "reasoning": null,
+  "raw_prompt": "search on youtube something",
+  "interpreted_intent": "agentic_action_plan",
+  "model_name": "jarvis-trained-model",
+  "prompt_eval_count": 117,
+  "eval_count": 10,
+  "eval_duration_ms": 90.143
+}
+STATE TRANSITIONS: Living Room Light: OFF -> ON (100%)
+EXECUTION LATENCY: 10349.38 ms (10.35 s)
+======================================================================
