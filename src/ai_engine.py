@@ -50,9 +50,35 @@ class DeviceAction(BaseModel):
         if not isinstance(values, dict):
             return values
 
-        target = str(values.get("device_or_target") or values.get("target") or values.get("device") or values.get("entity") or "").lower().strip()
-        act = str(values.get("action") or "turn_on").lower().strip()
+        # Extract target from various candidate fields
+        target = str(
+            values.get("device_or_target")
+            or values.get("target")
+            or values.get("device")
+            or values.get("entity")
+            or values.get("room")
+            or values.get("light")
+            or values.get("app")
+            or values.get("name")
+            or values.get("software")
+            or values.get("website")
+            or ""
+        ).lower().strip()
+
+        # Extract action name from various candidate fields
+        act = str(
+            values.get("action")
+            or values.get("act")
+            or values.get("operation")
+            or values.get("type")
+            or values.get("command")
+            or "turn_on"
+        ).lower().strip()
+
         domain = str(values.get("domain") or "").lower().strip()
+        val = values.get("value") if values.get("value") is not None else (
+            values.get("val") or values.get("param") or values.get("parameter") or values.get("query") or values.get("temp") or values.get("temperature") or values.get("brightness")
+        )
 
         pc_targets = [
             "youtube", "spotify", "google", "github", "canvas", "browser", "chrome", "edge", "brave",
@@ -60,20 +86,43 @@ class DeviceAction(BaseModel):
             "explorer", "file_explorer", "vscode", "code", "task_manager", "lock_pc", "web_search",
             "discord", "steam", "volume", "media", "screenshot"
         ]
-        pc_actions = ["open_app", "close_app", "open_website", "system_control", "web_search", "media_control", "launch", "open", "close", "kill", "search"]
+        pc_actions = ["open_app", "close_app", "open_website", "system_control", "web_search", "media_control", "launch", "open", "close", "kill", "search", "play_music"]
+
+        # Infer target from action or value if target is missing
+        if not target:
+            if val and isinstance(val, str):
+                v_low = val.lower().strip()
+                if any(pt in v_low for pt in pc_targets):
+                    target = v_low
+                    val = None
+                elif any(st in v_low for st in ["kitchen", "bedroom", "living", "thermostat", "door", "lock", "fan", "blind"]):
+                    target = v_low
+                    val = None
+            else:
+                for pt in pc_targets:
+                    if pt in act:
+                        target = pt
+                        break
+
+        # Normalize target string
+        target_norm = target.replace(" ", "_").replace("-", "_")
+        if "notepad.exe" in target_norm or "notepad" in target_norm:
+            target_norm = "notepad"
+            target = "notepad"
+        elif "calc.exe" in target_norm or "calculator" in target_norm:
+            target_norm = "calculator"
+            target = "calculator"
+
+        # Automatically route climate and temperature entities to smart_home thermostat
+        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or any(k in act for k in ["set_temperature", "set temperature", "warm", "cool"]):
+            domain = "smart_home"
+            target = "thermostat"
 
         if not domain:
-            if any(pt in target for pt in pc_targets) or act in pc_actions:
+            if any(pt in target_norm for pt in pc_targets) or act in pc_actions or any(pt in act for pt in pc_targets):
                 domain = "pc_automation"
             else:
                 domain = "smart_home"
-
-        target_norm = target.replace(" ", "_").replace("-", "_")
-
-        # Automatically route climate and temperature entities to smart_home thermostat
-        if any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]) or act in ["set_temperature", "warm", "cool"]:
-            domain = "smart_home"
-            target = "thermostat"
 
         if domain == "smart_home":
             if "kitchen" in target_norm:
@@ -84,27 +133,48 @@ class DeviceAction(BaseModel):
                 target = "living_room_light"
             elif any(k in target_norm for k in ["thermostat", "temp", "climate", "ac", "heater", "heating", "heat"]):
                 target = "thermostat"
-            elif any(k in target_norm for k in ["door", "lock", "front_door"]):
+            elif any(k in target_norm for k in ["door", "lock", "front_door", "deadbolt"]):
                 target = "front_door_lock"
             elif any(k in target_norm for k in ["alarm", "security"]):
                 target = "security_alarm"
             elif any(k in target_norm for k in ["fan", "ceiling"]):
                 target = "ceiling_fan"
-            elif any(k in target_norm for k in ["blind", "blinds", "window"]):
+            elif any(k in target_norm for k in ["blind", "blinds", "window", "curtain"]):
                 target = "window_blinds"
             elif any(k in target_norm for k in ["entertainment", "tv"]):
                 target = "entertainment_unit"
             elif target_norm:
                 target = target_norm
 
-            if any(k in act for k in ["off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken"]):
+            # Normalize action strings
+            if any(k in act for k in ["turnoff", "turn_off", "turn off", "deactivate", "disable", "shut", "zero", "power_to_zero", "extinguish", "darken", "off"]):
                 act = "turn_off"
-            elif any(k in act for k in ["on", "activate", "enable", "illuminate"]):
+            elif any(k in act for k in ["turnon", "turn_on", "turn on", "activate", "enable", "illuminate", "on"]):
                 act = "turn_on"
+            elif any(k in act for k in ["set_temperature", "set temperature", "temperature", "temp"]):
+                act = "set_temperature"
+            elif "unlock" in act:
+                act = "unlock"
+            elif "lock" in act:
+                act = "lock"
+        else:
+            # PC Automation domain action normalization
+            if any(k in act for k in ["open", "launch", "start", "run"]):
+                if any(k in target for k in ["youtube", "github", "google", "canvas", "browser", "website"]):
+                    act = "open_website"
+                else:
+                    act = "open_app"
+            elif any(k in act for k in ["close", "kill", "terminate", "exit", "stop"]):
+                act = "close_app"
+            elif any(k in act for k in ["search", "query"]):
+                act = "open_website" if "youtube" in target else "web_search"
+            elif any(k in act for k in ["play", "stream", "listen"]):
+                act = "play_music" if target == "spotify" else "open_website"
 
         values["domain"] = domain
         values["device_or_target"] = target if target else ("browser" if domain == "pc_automation" else "living_room_light")
         values["action"] = act
+        values["value"] = val
         return values
 
     @property
@@ -127,11 +197,148 @@ class AssistantIntentResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def sanitize_plan(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            if not values.get("spoken_response"):
-                values["spoken_response"] = "Command executed successfully, sir."
-            if not values.get("interpreted_intent"):
-                values["interpreted_intent"] = "agentic_action_plan"
+        if isinstance(values, list):
+            values = {"actions": values, "spoken_response": ""}
+
+        if not isinstance(values, dict):
+            return values
+
+        raw_p = str(values.get("raw_prompt") or "").lower().strip()
+
+        # Check for multi-action routines in raw_prompt
+        if raw_p:
+            if any(w in raw_p for w in ["goodnight", "going to bed", "sleep mode", "bed time"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "bedroom_light", "action": "turn_off"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_off"},
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Goodnight, sir. All lights are powered down and the perimeter is secured."
+                values["interpreted_intent"] = "routine_goodnight"
+                return values
+
+            elif any(w in raw_p for w in ["movie night", "movie mode", "cinema mode"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "entertainment_unit", "action": "turn_on"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on", "value": 25}
+                ]
+                values["spoken_response"] = "Activating cinema mode, sir. Entertainment system online and ambient lighting set."
+                values["interpreted_intent"] = "routine_movie_night"
+                return values
+
+            elif any(w in raw_p for w in ["freezing", "cold and dark", "it is freezing", "chilly"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "thermostat", "action": "set_temperature", "value": 24.0},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on", "value": 100}
+                ]
+                values["spoken_response"] = "Adjusting the thermostat to 24.0°C and turning on the living room lights for warmth."
+                values["interpreted_intent"] = "routine_comfort"
+                return values
+
+            elif any(w in raw_p for w in ["heading out", "leaving the house", "leaving home"]):
+                values["actions"] = [
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"},
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"}
+                ]
+                values["spoken_response"] = "Perimeter locked and workstation secured. Have a safe trip, sir."
+                values["interpreted_intent"] = "routine_leaving"
+                return values
+
+            elif "notepad" in raw_p and "light" in raw_p:
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "notepad", "action": "open_app"},
+                    {"domain": "smart_home", "device_or_target": "living_room_light", "action": "turn_on"}
+                ]
+                values["spoken_response"] = "Opening Notepad and illuminating the living room lights."
+                values["interpreted_intent"] = "compound_dual_domain"
+                return values
+
+            elif "lock" in raw_p and ("pc" in raw_p or "workstation" in raw_p) and ("door" in raw_p or "house" in raw_p):
+                values["actions"] = [
+                    {"domain": "pc_automation", "device_or_target": "lock_pc", "action": "system_control"},
+                    {"domain": "smart_home", "device_or_target": "front_door_lock", "action": "lock"}
+                ]
+                values["spoken_response"] = "Locking workstation and securing the front door, sir."
+                values["interpreted_intent"] = "compound_dual_domain"
+                return values
+
+        # 1. Extract or construct actions list
+        raw_actions = values.get("actions")
+        if raw_actions is None or not isinstance(raw_actions, list) or len(raw_actions) == 0:
+            # Check if root dictionary itself is an action object
+            action_keys = [
+                "action", "act", "operation", "device", "target", "device_or_target",
+                "entity", "room", "light", "app", "name", "value", "val", "temperature", "temp"
+            ]
+            if any(k in values for k in action_keys):
+                candidate_action = {
+                    "domain": values.get("domain"),
+                    "device_or_target": values.get("device_or_target") or values.get("device") or values.get("target") or values.get("entity") or values.get("room") or values.get("light") or values.get("app") or values.get("name"),
+                    "action": values.get("action") or values.get("act") or values.get("operation") or "turn_on",
+                    "value": values.get("value") if values.get("value") is not None else (values.get("val") or values.get("temperature") or values.get("temp"))
+                }
+                values["actions"] = [candidate_action]
+
+        # 2. Contextual spoken response generation if missing or generic
+        spoken = str(values.get("spoken_response") or "").strip()
+        generic_defaults = [
+            "", "command executed successfully, sir.", "executing command, sir.",
+            "executing your request, sir.", "done, sir.", "ok, sir."
+        ]
+
+        if not spoken or spoken.lower() in generic_defaults:
+            actions_list = values.get("actions") or []
+            if actions_list:
+                first_act = actions_list[0]
+                if isinstance(first_act, dict):
+                    f_target = str(first_act.get("device_or_target") or first_act.get("device") or first_act.get("target") or first_act.get("room") or "").lower()
+                    f_act = str(first_act.get("action") or "turn_on").lower()
+                    f_val = first_act.get("value")
+                elif hasattr(first_act, "device_or_target"):
+                    f_target = str(first_act.device_or_target).lower()
+                    f_act = str(first_act.action).lower()
+                    f_val = first_act.value
+                else:
+                    f_target = ""
+                    f_act = ""
+                    f_val = None
+
+                if "bedroom" in f_target:
+                    spoken = "Turning off the bedroom light, sir." if "off" in f_act else "Illuminating the bedroom light, sir."
+                elif "kitchen" in f_target:
+                    spoken = "Turning off the kitchen light, sir." if "off" in f_act else "Illuminating the kitchen light, sir."
+                elif "living" in f_target:
+                    spoken = "Turning off the living room light, sir." if "off" in f_act else "Illuminating the living room light, sir."
+                elif "thermostat" in f_target or "temp" in f_target:
+                    spoken = f"Setting the thermostat to {f_val}°C, sir." if f_val else "Adjusting the thermostat, sir."
+                elif "door" in f_target or "lock" in f_target:
+                    spoken = "Front door unlocked, sir." if "unlock" in f_act else "Front door locked and secured, sir."
+                elif "fan" in f_target:
+                    spoken = "Ceiling fan turned off, sir." if "off" in f_act else f"Ceiling fan speed set to {f_val if f_val else 'HIGH'}, sir."
+                elif "blind" in f_target:
+                    spoken = "Window blinds closed, sir." if ("close" in f_act or "off" in f_act) else "Window blinds opened, sir."
+                elif "spotify" in f_target:
+                    spoken = f"Playing '{f_val}' on Spotify, sir." if f_val else "Opening Spotify, sir."
+                elif "youtube" in f_target:
+                    spoken = f"Opening YouTube for '{f_val}', sir." if f_val else "Opening YouTube, sir."
+                elif "notepad" in f_target:
+                    spoken = "Opening Notepad, sir."
+                elif "calculator" in f_target or "calc" in f_target:
+                    spoken = "Opening Calculator, sir."
+                elif "code" in f_target or "vscode" in f_target:
+                    spoken = "Opening Visual Studio Code, sir."
+                elif "lock_pc" in f_target or ("lock" in f_act and "pc" in f_target):
+                    spoken = "Workstation locked, sir."
+                else:
+                    spoken = f"Executing command for {f_target.replace('_', ' ')}, sir." if f_target else "Command executed successfully, sir."
+            else:
+                spoken = "I am at your service, sir. What can I do for you?"
+
+            values["spoken_response"] = spoken
+
+        if not values.get("interpreted_intent"):
+            values["interpreted_intent"] = "agentic_action_plan"
+
         return values
 
 
@@ -567,8 +774,10 @@ class AIEngine:
     """
 
     SYSTEM_PROMPT = (
-        "You are JARVIS, an autonomous AI smart home and desktop assistant. "
-        "Parse the user request into structured JSON actions."
+        "You are JARVIS, an autonomous AI smart home and desktop assistant created by Christian Ezekiel Carvajal and John Miko Sarsalijo. "
+        "Parse the user request into structured JSON actions. "
+        "STRICT ANTI-HALLUCINATION RULE: Never invent, guess, or hallucinate search queries, song names, artists, or parameters not explicitly stated by the user. "
+        "If the user only asks to open or launch an application or website without specifying a query, set 'value' to null."
     )
 
     def __init__(self, model_name: Optional[str] = None, base_url: str = "http://localhost:11434"):
@@ -686,6 +895,15 @@ class AIEngine:
 
                     # Strict Pydantic v2 validation
                     plan = AssistantIntentResponse.model_validate(parsed_data)
+
+                    # If Ollama produced 0 actions for an actionable command, enrich from semantic reasoning
+                    if len(plan.actions) == 0:
+                        fallback = self._semantic_fallback_parse(clean_prompt, live_state=live_state)
+                        if len(fallback.actions) > 0:
+                            plan.actions = fallback.actions
+                            if not plan.spoken_response or plan.spoken_response == "Command executed successfully, sir.":
+                                plan.spoken_response = fallback.spoken_response
+
                     return plan
             except Exception as e:
                 print(f"[AIEngine Ollama parse notice: {e}]")

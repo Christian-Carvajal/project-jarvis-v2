@@ -89,7 +89,8 @@ class JarvisVirtualAssistant:
             on_command_submit=self.handle_typed_command,
             on_halt_clicked=self.handle_emergency_halt,
             on_mic_toggle=self.handle_mic_toggle,
-            on_model_change=self.handle_model_change
+            on_model_change=self.handle_model_change,
+            on_voice_trigger=self.handle_voice_trigger
         )
         self.simulator = self.gui  # Alias for blueprint compatibility
 
@@ -278,6 +279,34 @@ class JarvisVirtualAssistant:
             self._execute_command_pipeline(typed_text.strip())
 
         threading.Thread(target=_worker, daemon=True).start()
+
+    def handle_voice_trigger(self):
+        """Asynchronous single-turn voice capture when user clicks 'SPEAK NOW' in the GUI."""
+        if self.is_processing:
+            return
+
+        def _voice_worker():
+            self.is_processing = True
+            if hasattr(self, 'gui') and self.gui:
+                self.gui.after(0, lambda: self.gui.update_status("Listening for Command...", "#00FF88"))
+
+            command_text = self.voice.listen_raw_command(timeout=5.5)
+
+            if command_text and len(command_text.strip()) >= 3:
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.log_console(f"🎙️ [VOICE RECOGNIZED]: \"{command_text.strip()}\""))
+                self._execute_command_pipeline(command_text.strip())
+            else:
+                msg = "No command detected, sir."
+                if hasattr(self, 'gui') and self.gui:
+                    self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{msg}\""))
+                    self.gui.after(0, lambda: self.gui.update_status("Standby (Waiting for 'Jarvis')", "#00E5FF"))
+                self.voice.speak(msg)
+                self.is_processing = False
+
+            self._reset_to_standby()
+
+        threading.Thread(target=_voice_worker, daemon=True).start()
 
     def handle_emergency_halt(self):
         """Emergency HALT: Stops TTS playback and resets pipeline to Standby."""

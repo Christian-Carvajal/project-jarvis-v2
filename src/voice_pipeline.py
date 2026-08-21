@@ -30,8 +30,15 @@ import threading
 import logging
 from typing import Optional, Callable, Tuple
 import numpy as np
-import speech_recognition as sr
 import pyttsx3
+
+try:
+    import pyaudiowpatch as pyaudio
+    sys.modules['pyaudio'] = pyaudio
+except ImportError:
+    pass
+
+import speech_recognition as sr
 
 try:
     import sounddevice as sd
@@ -84,9 +91,8 @@ logger = logging.getLogger("JarvisLogger")
 
 def discover_working_microphone() -> Tuple[Optional[int], int, int, str]:
     """
-    Scans and dynamically probes all audio input devices on Windows.
-    Tests candidate devices (prioritizing physical hardware arrays like Realtek, AMD, Intel, USB audio, WDM-KS, WASAPI)
-    by opening a micro-stream and verifying that frames are actually captured without PortAudio / OS errors.
+    Scans and dynamically probes audio input devices on Windows.
+    Tests candidate devices by verifying active stream opening and non-blocking capture.
     Returns:
         (device_index, native_samplerate, channels, device_name)
     """
@@ -100,8 +106,16 @@ def discover_working_microphone() -> Tuple[Optional[int], int, int, str]:
         preferred_keywords = ['microphone array', 'realtek', 'amd', 'intel', 'nvidia broadcast', 'usb audio', 'headset', 'mic']
 
         candidates = []
+
+        # Check default device first if available
+        def_in = sd.default.device[0] if isinstance(sd.default.device, (list, tuple)) else None
+        if def_in is not None and def_in >= 0 and def_in < len(devices):
+            d = devices[def_in]
+            if d['max_input_channels'] > 0:
+                candidates.append((100, def_in, d))
+
         for idx, dev in enumerate(devices):
-            if dev['max_input_channels'] <= 0:
+            if dev['max_input_channels'] <= 0 or idx == def_in:
                 continue
             name_lower = dev['name'].lower()
             if any(avoid in name_lower for avoid in avoid_keywords):
@@ -109,35 +123,29 @@ def discover_working_microphone() -> Tuple[Optional[int], int, int, str]:
 
             score = 0
             api_name = hostapis[dev['hostapi']]['name'].lower()
-            if 'wdm-ks' in api_name:
-                score += 30
-            elif 'wasapi' in api_name:
-                score += 20
+            if 'wasapi' in api_name:
+                score += 25
             elif 'directsound' in api_name:
+                score += 15
+            elif 'wdm-ks' in api_name:
                 score += 10
 
             if any(pref in name_lower for pref in preferred_keywords):
-                score += 50
+                score += 40
             if 'microphone array' in name_lower:
                 score += 20
 
             candidates.append((score, idx, dev))
 
-        # Sort candidates by suitability score descending
+        # Sort candidates by score descending
         candidates.sort(key=lambda x: x[0], reverse=True)
 
-        # Include remaining input devices as fallback
-        existing_indices = {c[1] for c in candidates}
-        for idx, dev in enumerate(devices):
-            if dev['max_input_channels'] > 0 and idx not in existing_indices:
-                candidates.append((0, idx, dev))
-
-        # Dynamically probe each candidate device to ensure 0 PortAudio errors
+        # Probe candidate devices
         for score, idx, dev in candidates:
             api_name = hostapis[dev['hostapi']]['name']
             sr_options = [int(dev['default_samplerate']), 48000, 44100, 16000]
             sr_options = list(dict.fromkeys(sr_options))
-            ch_options = [dev['max_input_channels'], 1]
+            ch_options = [min(2, dev['max_input_channels']), 1]
             ch_options = list(dict.fromkeys(ch_options))
 
             for sr_test in sr_options:
@@ -154,7 +162,7 @@ def discover_working_microphone() -> Tuple[Optional[int], int, int, str]:
                             dtype='float32',
                             callback=_test_cb
                         ):
-                            time.sleep(0.08)
+                            time.sleep(0.06)
 
                         if len(frames_received) > 0:
                             print(f"[STT Mic Selection]: Selected verified hardware mic '{dev['name']}' (Index {idx}, {api_name}, {sr_test}Hz, {ch_test}ch).")
@@ -165,7 +173,8 @@ def discover_working_microphone() -> Tuple[Optional[int], int, int, str]:
     except Exception as e:
         print(f"[STT Mic Auto-Discovery Notice: {e}]")
 
-    return None, 16000, 1, "Default"
+    print("[STT Mic Selection]: Using System Default input stream (SpeechRecognition / Windows Audio fallback).")
+    return None, 16000, 1, "System Default Microphone"
 
 
 def find_best_hardware_microphone() -> Optional[int]:
@@ -463,6 +472,7 @@ class VoicePipeline:
         """
         Flexible Wake-Word Gating with Fragment Protection:
         Matches: 'jarvis', 'hey jarvis', 'hi jarvis', 'hello jarvis', 'okay jarvis', 'jarvisst', etc.
+        Also accepts direct action requests (e.g., 'turn on bedroom light', 'open spotify').
         Returns:
             (is_wake: bool, sanitized_command: str)
         """
@@ -476,6 +486,17 @@ class VoicePipeline:
         match = re.search(wake_pattern, clean, flags=re.IGNORECASE)
 
         if not match and "jarvis" not in clean:
+            # Check for direct actionable voice command intents
+            direct_triggers = [
+                "turn on", "turn off", "set temperature", "set the temperature",
+                "open spotify", "play spotify", "play music", "open youtube",
+                "open notepad", "open calculator", "open code", "open vscode",
+                "open brave", "open chrome", "open edge", "lock the door", "unlock the door",
+                "lock my pc", "lock the pc", "goodnight", "movie night", "it is freezing"
+            ]
+            if any(dt in clean for dt in direct_triggers):
+                return True, clean
+
             return False, ""
 
         # Strip wake-word prefix
