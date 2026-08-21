@@ -215,13 +215,19 @@ class JarvisVirtualAssistant:
                 self.gui.after(0, lambda r=intent.reasoning: self.gui.log_console(f"💭 REASONING: {r}"))
             self.gui.after(0, lambda: self.gui.log_console(f"🧠 ACTION PLAN: {len(intent.actions)} action(s) planned"))
 
-        # 2. Dispatch Actions
+        # 2. Dispatch Actions (Deduplicated Execution)
         state_transitions: List[str] = []
+        dispatched_sigs = set()
 
         for act in intent.actions:
             target = act.device_or_target
             action_name = act.action
             val = act.value
+
+            sig = f"{act.domain}:{target}:{action_name}:{val}"
+            if sig in dispatched_sigs:
+                continue
+            dispatched_sigs.add(sig)
 
             # Smart Home Domain
             if act.domain == "smart_home":
@@ -288,8 +294,12 @@ class JarvisVirtualAssistant:
             self.gui.after(0, lambda: self.gui.log_console(f"Jarvis: \"{spoken}\""))
             self.gui.after(0, lambda: self.gui.update_status("Speaking Response...", "#00E676"))
 
+        # Wait for TTS audio playback to completely finish before unmuting mic / returning to standby
+        # This prevents the microphone from capturing speaker audio feedback and repeating commands
         event = threading.Event()
         self.voice.speak(spoken, callback=lambda: event.set())
+        event.wait(timeout=10.0)
+        time.sleep(0.4)
 
         # 5. Persist ISO Timestamped Audit Log
         self._write_execution_log(

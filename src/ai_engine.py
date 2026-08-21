@@ -402,6 +402,40 @@ class AssistantIntentResponse(BaseModel):
                 }
                 values["actions"] = [candidate_action]
 
+        # 1b. Action Deduplication & Redundancy Filtering (Prevents duplicate app/website launches)
+        cur_actions = values.get("actions")
+        if cur_actions and isinstance(cur_actions, list):
+            deduped = []
+            seen_signatures = set()
+            for act in cur_actions:
+                if isinstance(act, dict):
+                    dom = act.get("domain") or "pc_automation"
+                    tgt = str(act.get("device_or_target") or act.get("target") or act.get("device") or "").lower().strip()
+                    op = str(act.get("action") or act.get("act") or "").lower().strip()
+                    val = str(act.get("value") or "").strip()
+                elif hasattr(act, "device_or_target"):
+                    dom = act.domain
+                    tgt = str(act.device_or_target).lower().strip()
+                    op = str(act.action).lower().strip()
+                    val = str(act.value or "").strip()
+                else:
+                    dom, tgt, op, val = None, "", "", ""
+
+                sig = f"{dom}:{tgt}:{op}:{val}"
+                if sig in seen_signatures:
+                    continue
+
+                if dom == "pc_automation" and op in ["open_app", "open_website"]:
+                    if any("youtube" in s for s in seen_signatures) and ("youtube" in tgt or "youtube" in val or tgt in ["chrome", "edge", "browser"]):
+                        continue
+                    if any("spotify" in s for s in seen_signatures) and ("spotify" in tgt or "spotify" in val):
+                        continue
+
+                seen_signatures.add(sig)
+                deduped.append(act)
+
+            values["actions"] = deduped
+
         # 2. Contextual spoken response generation if missing or generic
         spoken = str(values.get("spoken_response") or "").strip()
         generic_defaults = [
